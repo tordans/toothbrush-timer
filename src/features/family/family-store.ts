@@ -11,7 +11,13 @@ import {
   type Slot,
 } from './schema'
 
-export type SyncStatus = 'local' | 'syncing' | 'synced' | 'offline' | 'unauthorized'
+export type SyncStatus =
+  | 'local'
+  | 'syncing'
+  | 'synced'
+  | 'offline'
+  | 'unauthorized'
+  | 'incompatible'
 
 type FamilyStore = {
   family: FamilyState

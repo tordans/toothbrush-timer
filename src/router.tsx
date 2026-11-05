@@ -36,10 +36,22 @@ const parentsRoute = createRoute({
 export const router = createRouter({
   routeTree: rootRoute.addChildren([homeRoute, brushRoute, parentsRoute]),
   defaultNotFoundComponent: () => <Navigate to="/" />,
+  defaultErrorComponent: ErrorScreen,
 })
 
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
+}
+
+function ErrorScreen() {
+  return (
+    <main className="flex h-full flex-col items-center justify-center gap-4 bg-moss-800 p-6 text-center text-cream">
+      <p className="text-2xl font-extrabold">Hier ist etwas schiefgegangen.</p>
+      <a href="/" className="rounded-full bg-sun px-6 py-3 text-xl font-extrabold text-bark-900">
+        Zurück in den Wald
+      </a>
+    </main>
+  )
 }

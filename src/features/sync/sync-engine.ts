@@ -36,6 +36,9 @@ async function syncOnce(): Promise<void> {
   for (let round = 0; round < MAX_CONFLICT_ROUNDS; round++) {
     const local = familyStore.getState().family
     const server = remoteFamily(remote)
+    // Data from a newer app version (or repaired by hand) that this version cannot read:
+    // never overwrite it. Keep everything local and ask for a reload.
+    if (remote.data != null && !server) return setSyncStatus('incompatible')
     const merged = server ? mergeFamilyStates(local, server) : local
 
     if (server && sameFamilyState(merged, server)) {

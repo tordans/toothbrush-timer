@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, startOfWeek } from 'date-fns'
+import { addDays, format, isValid, parseISO, startOfWeek } from 'date-fns'
 import { de } from 'date-fns/locale'
 import type { Slot } from '@/features/family/schema'
 
@@ -38,5 +38,6 @@ export function weekRangeLabel(days: Date[]): string {
 }
 
 export function timeLabel(iso: string): string {
-  return format(parseISO(iso), 'HH:mm')
+  const date = parseISO(iso)
+  return isValid(date) ? format(date, 'HH:mm') : ''
 }

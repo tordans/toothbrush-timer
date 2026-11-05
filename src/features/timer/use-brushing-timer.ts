@@ -33,6 +33,9 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
   useEffect(() => {
     if (phase !== 'running') return
     const id = setInterval(() => {
+      // Stopped (done or paused) but React has not removed this interval yet: do nothing,
+      // otherwise "done" could fire twice.
+      if (since.current == null) return
       const ms = read()
       const pos = timerPosition(ms)
       setElapsedMs(ms)

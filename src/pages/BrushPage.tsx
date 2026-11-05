@@ -10,7 +10,7 @@ import {
   RestartIcon,
 } from '@/components/icons'
 import { Button, Card } from '@/components/ui'
-import { useFamily, useFamilyActions } from '@/features/family/family-store'
+import { familyStore, useFamily, useFamilyActions } from '@/features/family/family-store'
 import type { Animal as AnimalId } from '@/features/family/schema'
 import { Animal } from '@/features/forest/Animal'
 import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
@@ -41,6 +41,9 @@ export function BrushPage() {
 
   const record = (seconds: number) => {
     if (recorded.current) return
+    // The kid may have been removed on another phone while brushing.
+    const current = familyStore.getState().family.kids[kidId]
+    if (!current || current.deleted) return
     recorded.current = true
     recordBrushing({ kidId, date, slot, seconds })
   }

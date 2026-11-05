@@ -280,6 +280,8 @@ const STATUS_TEXT: Record<SyncStatus, string> = {
   synced: 'Mit dem Familien-Speicher abgeglichen.',
   offline: 'Keine Verbindung. Wird nachgeholt, sobald das Gerät wieder online ist.',
   unauthorized: 'Der Familien-Link gilt nicht mehr. Bitte den neuen Link öffnen.',
+  incompatible:
+    'Auf dem Server liegen Daten einer neueren Version. Bitte die Seite neu laden. Bis dahin wird nur auf diesem Gerät gespeichert.',
 }
 
 function DevicesSection() {
@@ -310,7 +312,7 @@ function DevicesSection() {
           status === 'synced' && 'bg-moss-100 text-moss-800',
           status === 'local' && 'bg-bark-100 text-bark-800',
           (status === 'offline' || status === 'syncing') && 'bg-[#fdf1cf] text-bark-800',
-          status === 'unauthorized' && 'bg-[#fbd9d4] text-[#8a2f25]',
+          (status === 'unauthorized' || status === 'incompatible') && 'bg-[#fbd9d4] text-[#8a2f25]',
         )}
       >
         {STATUS_TEXT[status]}
