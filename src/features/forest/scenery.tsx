@@ -4,7 +4,49 @@ type At = { x: number; y: number; s?: number }
 
 const place = ({ x, y, s = 1 }: At) => `translate(${x} ${y}) scale(${s})`
 
-export function PineTree(p: At & { tone?: 0 | 1 | 2 }) {
+/** The forest follows the seasons: blossoms, summer green, autumn leaves, snow. */
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter'
+
+const SEASONS: Season[] = ['spring', 'summer', 'autumn', 'winter']
+
+export function seasonFor(date: Date): Season {
+  // Dev only: localStorage 'brush-season' = 'winter' etc. to look at other seasons.
+  const override = import.meta.env.DEV ? localStorage.getItem('brush-season') : null
+  if (override && (SEASONS as string[]).includes(override)) return override as Season
+  const m = date.getMonth() + 1
+  if (m === 12 || m <= 2) return 'winter'
+  if (m <= 5) return 'spring'
+  if (m <= 8) return 'summer'
+  return 'autumn'
+}
+
+export const GROUND: Record<
+  Season,
+  { light: [string, string]; dark: [string, string]; hills: [string, string] }
+> = {
+  spring: {
+    light: ['#9cc463', '#78a447'],
+    dark: ['#5c7d3a', '#3f5a28'],
+    hills: ['#b5d395', '#4c6a52'],
+  },
+  summer: {
+    light: ['#8fb85a', '#6e9a42'],
+    dark: ['#5c7d3a', '#3f5a28'],
+    hills: ['#a9c98a', '#4c6a52'],
+  },
+  autumn: {
+    light: ['#a3b45a', '#86964a'],
+    dark: ['#66703a', '#4a5228'],
+    hills: ['#c4c48a', '#5a6248'],
+  },
+  winter: {
+    light: ['#eef3f6', '#d3e0e8'],
+    dark: ['#b9c6d6', '#8e9bb4'],
+    hills: ['#f6f9fb', '#9aa7c0'],
+  },
+}
+
+export function PineTree(p: At & { tone?: 0 | 1 | 2; season: Season }) {
   const greens = ['#3f6b3a', '#355d33', '#2c4f2c'] as const
   const g = greens[p.tone ?? 0]
   return (
@@ -21,19 +63,37 @@ export function PineTree(p: At & { tone?: 0 | 1 | 2 }) {
         opacity="0.08"
         transform="translate(0 -24)"
       />
+      {p.season === 'winter' && (
+        <path
+          d="M0 -214 L-30 -162 L-15 -168 L0 -158 L15 -168 L30 -162 Z M-46 -134 L-22 -138 L-36 -124 Z M46 -134 L22 -138 L36 -124 Z M-62 -74 L-36 -78 L-50 -64 Z M62 -74 L36 -78 L50 -64 Z"
+          fill="#ffffff"
+        />
+      )}
     </g>
   )
 }
 
-export function RoundTree(p: At & { tone?: 0 | 1 | 2 }) {
-  const crowns = [
+const CROWNS: Record<Exclude<Season, 'winter'>, [string, string][]> = {
+  spring: [
+    ['#9cc760', '#7ea64a'],
+    ['#a8d06c', '#8bb35a'],
+    ['#9cc760', '#7ea64a'],
+  ],
+  summer: [
     ['#7ea64a', '#6a8f3b'],
     ['#94b35a', '#7ea64a'],
-    ['#d39a3a', '#bf8530'],
-  ] as const
-  const [light, dark] = crowns[p.tone ?? 0]
-  return (
-    <g transform={place(p)}>
+    ['#6a8f3b', '#52722c'],
+  ],
+  autumn: [
+    ['#e0a43c', '#c9852c'],
+    ['#d9673a', '#b8502c'],
+    ['#c9b23f', '#a8922f'],
+  ],
+}
+
+export function RoundTree(p: At & { tone?: 0 | 1 | 2; season: Season }) {
+  const trunk = (
+    <>
       <path d="M-8 0 L-6 -70 L6 -70 L8 0 Z" fill="#7a5638" />
       <path
         d="M-4 -58 L-26 -86 M4 -64 L22 -92"
@@ -41,21 +101,59 @@ export function RoundTree(p: At & { tone?: 0 | 1 | 2 }) {
         strokeWidth="6"
         strokeLinecap="round"
       />
+    </>
+  )
+  if (p.season === 'winter') {
+    // bare branches with a little snow
+    return (
+      <g transform={place(p)}>
+        {trunk}
+        <path
+          d="M0 -70 L0 -150 M0 -110 L-38 -140 M0 -124 L34 -156 M-26 -86 L-56 -110 M22 -92 L52 -116 M-38 -140 L-46 -164 M34 -156 L40 -178"
+          stroke="#7a5638"
+          strokeWidth="6"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M-6 -150 Q0 -158 6 -150 M-44 -142 Q-38 -148 -32 -140 M28 -158 Q34 -164 40 -156"
+          stroke="#ffffff"
+          strokeWidth="6"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </g>
+    )
+  }
+  const [light, dark] = CROWNS[p.season][p.tone ?? 0] ?? ['#7ea64a', '#6a8f3b']
+  return (
+    <g transform={place(p)}>
+      {trunk}
       <circle cx="0" cy="-118" r="54" fill={dark} />
       <circle cx="-34" cy="-96" r="36" fill={dark} />
       <circle cx="34" cy="-92" r="38" fill={dark} />
       <circle cx="-12" cy="-132" r="40" fill={light} />
       <circle cx="26" cy="-118" r="30" fill={light} />
+      {p.season === 'spring' &&
+        [
+          [-30, -130],
+          [6, -150],
+          [30, -110],
+          [-10, -100],
+          [-44, -98],
+          [40, -136],
+        ].map(([x, y]) => <circle key={`${x}${y}`} cx={x} cy={y} r="6" fill="#f7c6d4" />)}
     </g>
   )
 }
 
-export function Bush(p: At) {
+export function Bush(p: At & { season: Season }) {
+  const winter = p.season === 'winter'
   return (
     <g transform={place(p)}>
-      <ellipse cx="0" cy="-18" rx="44" ry="26" fill="#5f8a3a" />
-      <ellipse cx="-24" cy="-26" rx="24" ry="20" fill="#74a046" />
-      <ellipse cx="18" cy="-30" rx="26" ry="22" fill="#74a046" />
+      <ellipse cx="0" cy="-18" rx="44" ry="26" fill={winter ? '#4f7a46' : '#5f8a3a'} />
+      <ellipse cx="-24" cy="-26" rx="24" ry="20" fill={winter ? '#ffffff' : '#74a046'} />
+      <ellipse cx="18" cy="-30" rx="26" ry="22" fill={winter ? '#ffffff' : '#74a046'} />
       <circle cx="-14" cy="-30" r="3.5" fill="#e3584b" />
       <circle cx="10" cy="-38" r="3.5" fill="#e3584b" />
       <circle cx="26" cy="-22" r="3.5" fill="#e3584b" />

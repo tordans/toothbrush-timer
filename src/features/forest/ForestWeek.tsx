@@ -11,8 +11,10 @@ import {
   PineTree,
   Rock,
   RoundTree,
+  GROUND,
   SKY,
   type DayLight,
+  type Season,
 } from './scenery'
 
 export type DayStatus = {
@@ -29,6 +31,7 @@ type Props = {
   days: DayStatus[]
   animal: AnimalId | null
   light: DayLight
+  season: Season
   portrait: boolean
 }
 
@@ -141,12 +144,13 @@ function smoothPath(points: Pt[]): string {
   return d
 }
 
-export function ForestWeek({ days, animal, light, portrait }: Props) {
+export function ForestWeek({ days, animal, light, season, portrait }: Props) {
   const id = useId().replace(/:/g, '')
   const L = portrait ? PORTRAIT : LANDSCAPE
   const path = smoothPath([L.pathStart, ...L.stations, L.pathEnd])
   const [skyTop, skyBottom] = SKY[light]
   const dark = light === 'night' || light === 'evening'
+  const ground = GROUND[season]
   const todayIndex = days.findIndex((d) => d.isToday)
   const todayStation = todayIndex >= 0 ? L.stations[todayIndex] : undefined
 
@@ -164,8 +168,8 @@ export function ForestWeek({ days, animal, light, portrait }: Props) {
           <stop offset="1" stopColor={skyBottom} />
         </linearGradient>
         <linearGradient id={`ground${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor={dark ? '#5c7d3a' : '#8fb85a'} />
-          <stop offset="1" stopColor={dark ? '#3f5a28' : '#6e9a42'} />
+          <stop offset="0" stopColor={(dark ? ground.dark : ground.light)[0]} />
+          <stop offset="1" stopColor={(dark ? ground.dark : ground.light)[1]} />
         </linearGradient>
       </defs>
 
@@ -175,14 +179,14 @@ export function ForestWeek({ days, animal, light, portrait }: Props) {
       {/* distant hills */}
       <path
         d={`M0 ${L.horizon} Q${L.w * 0.2} ${L.horizon - 90} ${L.w * 0.42} ${L.horizon - 20} T${L.w * 0.8} ${L.horizon - 40} T${L.w} ${L.horizon - 10} V${L.h} H0 Z`}
-        fill={dark ? '#4c6a52' : '#a9c98a'}
+        fill={dark ? ground.hills[1] : ground.hills[0]}
         opacity="0.8"
       />
       {L.back.map((t, i) =>
         t.kind === 'pine' ? (
-          <PineTree key={i} x={t.x} y={t.y} s={t.s} tone={t.tone} />
+          <PineTree key={i} x={t.x} y={t.y} s={t.s} tone={t.tone} season={season} />
         ) : (
-          <RoundTree key={i} x={t.x} y={t.y} s={t.s} tone={t.tone} />
+          <RoundTree key={i} x={t.x} y={t.y} s={t.s} tone={t.tone} season={season} />
         ),
       )}
 
@@ -206,7 +210,7 @@ export function ForestWeek({ days, animal, light, portrait }: Props) {
       {L.front.map((f, i) => {
         switch (f.kind) {
           case 'bush':
-            return <Bush key={i} x={f.x} y={f.y} s={f.s} />
+            return <Bush key={i} x={f.x} y={f.y} s={f.s} season={season} />
           case 'mushroom':
             return <Mushroom key={i} x={f.x} y={f.y} s={f.s} />
           case 'rock':
