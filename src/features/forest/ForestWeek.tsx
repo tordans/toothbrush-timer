@@ -227,8 +227,8 @@ export function ForestWeek({ days, animal, light, portrait }: Props) {
       {todayStation && animal && (
         // The child's animal waits left of today's clearing.
         <svg
-          x={todayStation.x - (portrait ? 190 : 150)}
-          y={todayStation.y - (portrait ? 190 : 200)}
+          x={todayStation.x - 250}
+          y={todayStation.y - (portrait ? 150 : 170)}
           width="150"
           height="150"
           viewBox="0 0 100 100"
@@ -252,7 +252,7 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
         <ellipse
           cx={x}
           cy={y}
-          rx="104"
+          rx="112"
           ry="40"
           fill="none"
           stroke="#fffbe8"
@@ -261,9 +261,9 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
           opacity="0.9"
         />
       )}
-      <ellipse cx={x} cy={y} rx="88" ry="30" fill={both ? '#c8e39a' : '#a8cc76'} />
-      <MorningFlower x={x - 42} y={y + 6} open={day.morning} s={1.15} />
-      <EveningLantern x={x + 30} y={y + 8} lit={day.evening} s={1.15} />
+      <ellipse cx={x} cy={y} rx="96" ry="34" fill={both ? '#c8e39a' : '#a8cc76'} />
+      <MorningFlower x={x - 44} y={y + 8} open={day.morning} s={1.6} />
+      <EveningLantern x={x + 22} y={y + 10} lit={day.evening} s={1.6} />
       {/* wooden sign with the weekday */}
       <g transform={`translate(${x} ${y + 64})`}>
         <rect x="-4" y="-22" width="8" height="28" fill="#7a5638" />

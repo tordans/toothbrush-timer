@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const ANIMALS = ['fox', 'hedgehog', 'owl', 'rabbit', 'squirrel', 'bear'] as const
-export const animalSchema = z.enum(ANIMALS)
+const animalSchema = z.enum(ANIMALS)
 export type Animal = z.infer<typeof animalSchema>
 
 export const SLOTS = ['morning', 'evening'] as const
@@ -43,7 +43,7 @@ const settingsSchema = z.object({
 })
 export type Settings = z.infer<typeof settingsSchema>
 
-export const familyStateSchema = z.object({
+const familyStateSchema = z.object({
   schema: z.literal(1),
   kids: z.record(z.string(), kidSchema),
   brushings: z.record(z.string(), brushingSchema),
@@ -51,7 +51,7 @@ export const familyStateSchema = z.object({
 })
 export type FamilyState = z.infer<typeof familyStateSchema>
 
-export const EPOCH = '1970-01-01T00:00:00.000Z'
+const EPOCH = '1970-01-01T00:00:00.000Z'
 
 export function emptyFamilyState(): FamilyState {
   return {

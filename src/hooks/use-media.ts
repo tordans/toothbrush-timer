@@ -13,7 +13,7 @@ function subscribeMedia(query: string) {
   }
 }
 
-export function useMediaQuery(query: string): boolean {
+function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribeMedia(query), () => window.matchMedia(query).matches)
 }
 

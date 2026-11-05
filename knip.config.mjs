@@ -2,18 +2,9 @@
 const strict = process.env.KNIP_STRICT === '1'
 
 export default {
-  entry: [
-    'src/main.tsx',
-    'tests/**/*.ts',
-    'api/tests/**/*.ts',
-    'vite.config.ts',
-    'vitest.config.ts',
-    'tailwind.config.ts',
-    'postcss.config.js',
-    'oxlint.config.mjs',
-    'oxfmt.config.mjs',
-  ],
-  ignoreDependencies: ['tailwindcss', 'autoprefixer', 'postcss', 'terser'],
+  entry: ['tests/**/*.ts', 'api/tests/**/*.ts'],
+  // sw.js is registered at runtime; the test docroot asset only exists for the routing tests
+  ignore: ['public/sw.js', 'api/tests/docroot/**'],
   rules: {
     files: 'error',
     dependencies: 'error',

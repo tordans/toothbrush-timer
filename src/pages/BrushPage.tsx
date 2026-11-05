@@ -163,7 +163,7 @@ export function BrushPage() {
       ) : (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 landscape:flex-row landscape:gap-10">
           {/* dial with the animal */}
-          <div className="relative aspect-square h-auto w-[min(78vw,46vh)] landscape:w-[min(42vw,62vh)]">
+          <div className="relative h-[min(78vw,46vh)] w-[min(78vw,46vh)] shrink-0 landscape:h-[min(42vw,62vh)] landscape:w-[min(42vw,62vh)]">
             <MouthDial sectionIndex={position.sectionIndex} progress={position.progress} />
             <div className="absolute -bottom-2 -right-6 w-[38%] animate-bob sm:-right-10">
               <Animal animal={kid.animal} brushing={timer.phase === 'running'} />

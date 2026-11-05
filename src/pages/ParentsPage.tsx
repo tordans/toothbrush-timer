@@ -17,7 +17,7 @@ import { SLOTS, type Animal as AnimalId, type Kid } from '@/features/family/sche
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
 import { syncNow } from '@/features/sync/sync-engine'
 import { useNow } from '@/hooks/use-now'
-import { dayMonth, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
+import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
 
 export function ParentsPage() {
   const navigate = useNavigate()
@@ -210,8 +210,8 @@ function CalendarSection() {
           const key = isoDay(d)
           return (
             <div key={key} className="flex items-center gap-2 px-3 py-2">
-              <span className="w-28 font-bold">
-                {weekdayShort(d)}, {dayMonth(d)}
+              <span className="w-24 shrink-0 font-bold">
+                {weekdayShort(d)}, {dayMonthShort(d)}
               </span>
               {SLOTS.map((slot) => {
                 const entries = brushingsFor(family, kid.id, key, slot)

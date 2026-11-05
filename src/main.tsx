@@ -8,6 +8,11 @@ import { router } from './router'
 
 startSync()
 
+// Offline start on weak Wi-Fi. Only in the build: in dev it would cache Vite's modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js'))
+}
+
 const root = document.getElementById('root')
 if (!root) throw new Error('#root missing')
 

@@ -93,7 +93,7 @@ export function HomePage() {
               >
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <span className="min-w-[7.5rem] text-center text-sm font-bold">
+              <span className="min-w-[5.5rem] text-center text-xs sm:min-w-[7.5rem] sm:text-sm font-bold">
                 {week === 0 ? 'Diese Woche' : weekRangeLabel(days)}
               </span>
               <button

@@ -1,6 +1,6 @@
 export const TOTAL_SECONDS = 120
-export const SECTION_COUNT = 4
-export const SECTION_SECONDS = TOTAL_SECONDS / SECTION_COUNT
+const SECTION_COUNT = 4
+const SECTION_SECONDS = TOTAL_SECONDS / SECTION_COUNT
 
 /** Seen like in a mirror: the child's own left is on the left of the screen. */
 export const SECTIONS = [
@@ -9,8 +9,6 @@ export const SECTIONS = [
   { id: 'bottom-right', label: 'Unten rechts', jaw: 'bottom', side: 'right' },
   { id: 'bottom-left', label: 'Unten links', jaw: 'bottom', side: 'left' },
 ] as const
-
-export type Section = (typeof SECTIONS)[number]
 
 export type TimerPosition = {
   /** 0–3 while brushing, 4 when finished. */

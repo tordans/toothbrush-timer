@@ -22,12 +22,12 @@ export function weekdayShort(date: Date): string {
   return format(date, 'EEEEEE', { locale: de })
 }
 
-export function weekdayLong(date: Date): string {
-  return format(date, 'EEEE', { locale: de })
-}
-
 export function dayMonth(date: Date): string {
   return format(date, 'd. MMMM', { locale: de })
+}
+
+export function dayMonthShort(date: Date): string {
+  return format(date, 'd. MMM', { locale: de })
 }
 
 export function weekRangeLabel(days: Date[]): string {
@@ -39,8 +39,4 @@ export function weekRangeLabel(days: Date[]): string {
 
 export function timeLabel(iso: string): string {
   return format(parseISO(iso), 'HH:mm')
-}
-
-export function fromIsoDay(day: string): Date {
-  return parseISO(day)
 }
