@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>placeholder app</title>
+  </head>
+  <body>
+    <script type="module" src="/assets/app-abc123.js"></script>
+    <div id="root">placeholder-index</div>
+  </body>
+</html>

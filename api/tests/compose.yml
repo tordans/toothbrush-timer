@@ -1,0 +1,42 @@
+# Local API for development and tests: Apache + PHP 8.4 and MariaDB 10.11 on http://localhost:8088
+name: brush-api
+
+services:
+  db:
+    image: mariadb:10.11
+    environment:
+      MARIADB_ROOT_PASSWORD: root-dev
+      MARIADB_DATABASE: brush
+      MARIADB_USER: brush
+      MARIADB_PASSWORD: brush-dev
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '8088:80'
+    volumes:
+      - ./config.php:/srv/brush/config/config.php:ro
+      - ../src:/srv/brush/api/src:ro
+      - ../migrations:/srv/brush/api/migrations:ro
+      - ../index.php:/srv/brush/public/api/index.php:ro
+      - ../../deploy/.htaccess:/srv/brush/public/.htaccess:ro
+      - logs:/srv/brush/logs
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost/api/health']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:
+  logs:

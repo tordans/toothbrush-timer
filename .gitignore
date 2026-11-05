@@ -1,0 +1,25 @@
+# Research material (reference app screenshots and notes) — never public
+research/
+
+# Logs
+logs
+*.log
+
+node_modules
+dist
+dist-ssr
+*.local
+.tsbuildinfo-app
+
+# Local API test data and generated config
+api/tests/.data/
+deploy-out/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.sw?

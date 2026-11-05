@@ -1,0 +1,143 @@
+name: Deploy
+
+# Builds the app, uploads app and API to the all-inkl webspace via FTPS, migrates the database
+# and checks the live site. One workflow for everything; see docs/central-storage.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://brush.ingsparks.de
+
+jobs:
+  deploy:
+    name: Check, build, upload, verify
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://brush.ingsparks.de
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run check-ci
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql
+          tools: none
+
+      - name: Lint PHP
+        run: find api deploy -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: API tests (PHP + MariaDB in Docker)
+        run: |
+          bun run api-up
+          bun run api-test
+          bun run api-down
+
+      - run: bun run build
+
+      - name: Assemble upload folder
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          FAMILY_KEY: ${{ secrets.FAMILY_KEY }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          MCP_KEY: ${{ secrets.MCP_KEY }}
+          # Repository variable (not a secret). Set to 1 to let the MCP endpoint write.
+          MCP_ALLOW_WRITE: ${{ vars.MCP_ALLOW_WRITE }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf deploy-out
+          mkdir -p deploy-out/site/public/api deploy-out/site/api deploy-out/index/public
+
+          # Document root: the Vite build, the web server rules, the API entry
+          cp -R dist/. deploy-out/site/public/
+          cp deploy/.htaccess deploy-out/site/public/.htaccess
+          cp api/index.php deploy-out/site/public/api/index.php
+
+          # PHP code and migrations next to public/ (not reachable from the web)
+          cp -R api/src deploy-out/site/api/src
+          cp -R api/migrations deploy-out/site/api/migrations
+
+          # Config outside the document root: DB credentials, key hashes, commit
+          php deploy/make-config.php deploy-out/site/config/config.php
+
+          # index.html goes up last (second pass), so visitors switch to the new build only
+          # after its assets and the new API code are in place.
+          mv deploy-out/site/public/index.html deploy-out/index/public/index.html
+
+          find deploy-out -type f | sort
+
+      - name: Upload, pass 1 (everything except index.html)
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: deploy-out/site/
+          server-dir: ./
+          state-name: .ftp-deploy-sync-state.json
+
+      - name: Upload, pass 2 (index.html)
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: deploy-out/index/
+          server-dir: ./
+          state-name: .ftp-deploy-sync-state-index.json
+
+      - name: Migrate database
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if curl -sS --fail-with-body --max-time 30 -X POST \
+              -H "Authorization: Bearer $DEPLOY_KEY" \
+              "$SITE_URL/api/migrate" | tee migrate.json; then
+              echo
+              {
+                echo "### Migration"
+                echo
+                echo '```json'
+                cat migrate.json
+                echo
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying in 10 s"
+            sleep 10
+          done
+          echo "Migration failed" >&2
+          exit 1
+
+      - name: Check the live site
+        env:
+          FAMILY_KEY: ${{ secrets.FAMILY_KEY }}
+          COMMIT: ${{ github.sha }}
+        run: SUMMARY_FILE="$GITHUB_STEP_SUMMARY" deploy/check.sh "$SITE_URL" "$COMMIT"

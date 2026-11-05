@@ -1,0 +1,316 @@
+import { getRouteApi, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { twMerge } from 'tailwind-merge'
+import {
+  CloseIcon,
+  MusicIcon,
+  MusicOffIcon,
+  PauseIcon,
+  PlayIcon,
+  RestartIcon,
+} from '@/components/icons'
+import { Button, Card } from '@/components/ui'
+import { useFamily, useFamilyActions } from '@/features/family/family-store'
+import type { Animal as AnimalId } from '@/features/family/schema'
+import { Animal } from '@/features/forest/Animal'
+import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
+import { brushingAudio } from '@/features/timer/audio'
+import { MouthDial } from '@/features/timer/MouthDial'
+import { clockLabel, SECTIONS, TOTAL_SECONDS } from '@/features/timer/sections'
+import { useBrushingTimer } from '@/features/timer/use-brushing-timer'
+import { allowScreenOff, keepScreenOn } from '@/features/timer/wake-lock'
+import { isoDay } from '@/lib/dates'
+
+const route = getRouteApi('/putzen')
+
+/** Brushed at least this long counts when stopping early (and the child confirms). */
+const MIN_COUNT_SECONDS = 60
+
+export function BrushPage() {
+  const { kid: kidId, slot } = route.useSearch()
+  const navigate = useNavigate()
+  const family = useFamily()
+  const { recordBrushing, updateSettings } = useFamilyActions()
+  const kid = family.kids[kidId]
+  const { music, gong } = family.settings
+
+  // Date of the brushing is fixed when the page opens (brushing across midnight stays "today").
+  const [date] = useState(() => isoDay(new Date()))
+  const [askStop, setAskStop] = useState(false)
+  const recorded = useRef(false)
+
+  const record = (seconds: number) => {
+    if (recorded.current) return
+    recorded.current = true
+    recordBrushing({ kidId, date, slot, seconds })
+  }
+
+  const timer = useBrushingTimer({
+    onSectionChange: () => {
+      if (gong) brushingAudio.sectionBell()
+    },
+    onDone: () => {
+      brushingAudio.stopMusic()
+      if (gong) brushingAudio.finishBells()
+      allowScreenOff()
+      record(TOTAL_SECONDS)
+    },
+    onAutoPause: () => brushingAudio.stopMusic(),
+  })
+
+  // Leaving the page (back button, navigation) always stops sound and the wake lock.
+  useEffect(
+    () => () => {
+      brushingAudio.stopMusic()
+      allowScreenOff()
+    },
+    [],
+  )
+
+  // Return to the forest a while after finishing.
+  useEffect(() => {
+    if (timer.phase !== 'done') return
+    const id = setTimeout(() => void navigate({ to: '/' }), 25_000)
+    return () => clearTimeout(id)
+  }, [timer.phase, navigate])
+
+  if (!kid || kid.deleted) {
+    return (
+      <main className="flex h-full items-center justify-center p-4">
+        <Button onClick={() => void navigate({ to: '/' })}>Zurück in den Wald</Button>
+      </main>
+    )
+  }
+
+  const start = () => {
+    brushingAudio.unlock()
+    if (music) brushingAudio.startMusic()
+    void keepScreenOn()
+    timer.start()
+  }
+  const resume = () => {
+    brushingAudio.unlock()
+    if (music) brushingAudio.startMusic()
+    void keepScreenOn()
+    timer.start()
+  }
+  const pause = () => {
+    brushingAudio.stopMusic()
+    timer.pause()
+  }
+  const restart = () => {
+    brushingAudio.unlock()
+    if (music) brushingAudio.startMusic()
+    void keepScreenOn()
+    timer.restart()
+  }
+  const toggleMusic = () => {
+    updateSettings({ music: !music })
+    if (timer.phase !== 'running') return
+    if (music) brushingAudio.stopMusic()
+    else {
+      brushingAudio.unlock()
+      brushingAudio.startMusic()
+    }
+  }
+  const close = () => {
+    if (timer.phase === 'ready' || timer.phase === 'done') {
+      void navigate({ to: '/' })
+      return
+    }
+    if (timer.phase === 'running') pause()
+    setAskStop(true)
+  }
+
+  const { position } = timer
+  const section = SECTIONS[position.sectionIndex]
+  const evening = slot === 'evening'
+
+  return (
+    <main
+      className={twMerge(
+        'relative flex h-full w-full flex-col overflow-hidden',
+        evening
+          ? 'bg-gradient-to-b from-night via-dusk to-[#6b5a8e] text-white'
+          : 'bg-gradient-to-b from-[#bfe3f2] via-[#e7f1df] to-[#cfe3a8] text-bark-900',
+      )}
+    >
+      {/* top controls */}
+      <div className="flex items-center justify-between p-3 sm:p-4">
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Aufhören"
+          className="rounded-full bg-white/25 p-3 backdrop-blur-sm"
+        >
+          <CloseIcon className="h-7 w-7" />
+        </button>
+        <p className="text-lg font-extrabold">
+          {kid.name} · {evening ? 'Abends' : 'Morgens'}
+        </p>
+        <button
+          type="button"
+          onClick={toggleMusic}
+          aria-label={music ? 'Musik aus' : 'Musik an'}
+          className="rounded-full bg-white/25 p-3 backdrop-blur-sm"
+        >
+          {music ? <MusicIcon className="h-7 w-7" /> : <MusicOffIcon className="h-7 w-7" />}
+        </button>
+      </div>
+
+      {timer.phase === 'done' ? (
+        <Done animal={kid.animal} evening={evening} onHome={() => void navigate({ to: '/' })} />
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 landscape:flex-row landscape:gap-10">
+          {/* dial with the animal */}
+          <div className="relative aspect-square h-auto w-[min(78vw,46vh)] landscape:w-[min(42vw,62vh)]">
+            <MouthDial sectionIndex={position.sectionIndex} progress={position.progress} />
+            <div className="absolute -bottom-2 -right-6 w-[38%] animate-bob sm:-right-10">
+              <Animal animal={kid.animal} brushing={timer.phase === 'running'} />
+            </div>
+          </div>
+
+          {/* text + buttons */}
+          <div className="flex flex-col items-center gap-4 text-center landscape:items-start landscape:text-left">
+            {timer.phase === 'ready' ? (
+              <>
+                <h1 className="text-3xl font-extrabold sm:text-4xl">Zwei Minuten, vier Ecken.</h1>
+                <p className="max-w-sm text-lg font-semibold opacity-80">
+                  Oben links, oben rechts, unten rechts, unten links. Bei jedem Gong geht es weiter.
+                </p>
+                <Button size="xl" onClick={start}>
+                  <PlayIcon className="h-8 w-8" />
+                  Los geht’s
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-bold uppercase tracking-wider opacity-70">
+                  Ecke {position.sectionIndex + 1} von 4
+                </p>
+                <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
+                <p className="text-2xl font-bold tabular-nums opacity-80">
+                  noch {clockLabel(position.totalRemaining)}
+                </p>
+                <div className="flex items-center gap-3">
+                  {timer.phase === 'running' ? (
+                    <Button size="xl" variant="secondary" onClick={pause} aria-label="Pause">
+                      <PauseIcon className="h-8 w-8" />
+                      Pause
+                    </Button>
+                  ) : (
+                    <Button size="xl" onClick={resume}>
+                      <PlayIcon className="h-8 w-8" />
+                      Weiter
+                    </Button>
+                  )}
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={restart}
+                    aria-label="Neu starten"
+                    className={evening ? '' : 'bg-white/60 text-bark-800'}
+                  >
+                    <RestartIcon className="h-6 w-6" />
+                  </Button>
+                </div>
+                {timer.phase === 'paused' && (
+                  <p className="text-lg font-bold opacity-80">
+                    Pause. Weiter, wenn du bereit bist.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {askStop && (
+        <StopDialog
+          elapsed={timer.elapsedSeconds()}
+          onContinue={() => {
+            setAskStop(false)
+            resume()
+          }}
+          onCount={() => {
+            record(timer.elapsedSeconds())
+            void navigate({ to: '/' })
+          }}
+          onDiscard={() => void navigate({ to: '/' })}
+        />
+      )}
+    </main>
+  )
+}
+
+function Done({
+  animal,
+  evening,
+  onHome,
+}: {
+  animal: AnimalId
+  evening: boolean
+  onHome: () => void
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 text-center landscape:flex-row landscape:gap-10 landscape:text-left">
+      <div className="flex shrink-0 items-end">
+        <svg
+          viewBox="-90 -190 180 200"
+          className="h-36 w-32 landscape:h-[38vh] landscape:w-auto"
+          aria-hidden="true"
+        >
+          {evening ? (
+            <EveningLantern x={-14} y={0} lit s={2} />
+          ) : (
+            <MorningFlower x={0} y={0} open s={2} />
+          )}
+        </svg>
+        <div className="w-32 animate-hop landscape:w-[30vh]">
+          <Animal animal={animal} />
+        </div>
+      </div>
+      <div className="flex flex-col items-center gap-3 landscape:items-start">
+        <h1 className="text-4xl font-extrabold sm:text-5xl">Fertig!</h1>
+        <p className="text-xl font-semibold opacity-85">
+          Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
+        </p>
+        <Button size="lg" className="text-2xl" onClick={onHome}>
+          Zurück in den Wald
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function StopDialog({
+  elapsed,
+  onContinue,
+  onCount,
+  onDiscard,
+}: {
+  elapsed: number
+  onContinue: () => void
+  onCount: () => void
+  onDiscard: () => void
+}) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-4">
+      <Card className="flex w-full max-w-md animate-fadein flex-col gap-3 text-bark-900">
+        <h2 className="text-2xl font-extrabold">Schon aufhören?</h2>
+        <p className="font-semibold">Du hast {clockLabel(elapsed)} von 2:00 geputzt.</p>
+        <Button size="lg" onClick={onContinue}>
+          Weiterputzen
+        </Button>
+        {elapsed >= MIN_COUNT_SECONDS && (
+          <Button size="lg" variant="secondary" onClick={onCount}>
+            Als geputzt eintragen
+          </Button>
+        )}
+        <Button size="lg" variant="secondary" onClick={onDiscard}>
+          Nicht eintragen
+        </Button>
+      </Card>
+    </div>
+  )
+}
