@@ -37,6 +37,10 @@ export function weekRangeLabel(days: Date[]): string {
   return `${format(first, 'd. MMM', { locale: de })} – ${format(last, 'd. MMM', { locale: de })}`
 }
 
+export function fromIsoDay(day: string): Date {
+  return parseISO(day)
+}
+
 export function timeLabel(iso: string): string {
   const date = parseISO(iso)
   return isValid(date) ? format(date, 'HH:mm') : ''

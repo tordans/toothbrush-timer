@@ -1,7 +1,14 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { twMerge } from 'tailwind-merge'
-import { ChevronLeft, ChevronRight, GearIcon, MoonIcon, SunIcon } from '@/components/icons'
+import {
+  CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  GearIcon,
+  MoonIcon,
+  SunIcon,
+} from '@/components/icons'
 import { AnimalBadge, AnimalPicker, Button, Card, HoldButton } from '@/components/ui'
 import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { activeKids, isBrushed } from '@/features/family/queries'
@@ -61,26 +68,30 @@ export function HomePage() {
         {/* top bar */}
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
           <div className="flex flex-wrap gap-2">
-            {kids.length > 1 &&
-              kids.map((k) => (
+            {/* Tap another child to switch; tap the current child to see all months. */}
+            {kids.map((k) => {
+              const current = k.id === kid?.id
+              return (
                 <button
                   key={k.id}
                   type="button"
-                  onClick={() => setActiveKid(k.id)}
+                  aria-label={current ? `${k.name}: alle Monate ansehen` : `${k.name} auswählen`}
+                  onClick={() =>
+                    current
+                      ? void navigate({ to: '/uebersicht', search: { kid: k.id } })
+                      : setActiveKid(k.id)
+                  }
                   className={twMerge(
-                    'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 text-lg font-extrabold shadow transition-colors',
-                    k.id === kid?.id ? 'bg-cream text-bark-900' : 'bg-white/40 text-bark-900/70',
+                    'flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-lg font-extrabold shadow transition-colors',
+                    current ? 'bg-cream text-bark-900' : 'bg-white/40 text-bark-900/70',
                   )}
                 >
                   <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
                   {k.name}
+                  {current && <CalendarIcon className="h-5 w-5 text-bark-600" />}
                 </button>
-              ))}
-            {kids.length === 1 && kid && (
-              <span className="rounded-full bg-cream/90 px-4 py-2 text-lg font-extrabold shadow">
-                {kid.name}
-              </span>
-            )}
+              )
+            })}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-full bg-cream/90 shadow">

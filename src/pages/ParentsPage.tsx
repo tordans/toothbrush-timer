@@ -31,6 +31,13 @@ export function ParentsPage() {
           </Button>
         </div>
         <h1 className="px-1 text-3xl font-extrabold text-cream">Für Eltern</h1>
+        <Button
+          variant="secondary"
+          className="self-start"
+          onClick={() => void navigate({ to: '/uebersicht' })}
+        >
+          Alle Monate ansehen
+        </Button>
         <KidsSection />
         <CalendarSection />
         <SoundSection />

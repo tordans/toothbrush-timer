@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { slotSchema } from './features/family/schema'
 import { BrushPage } from './pages/BrushPage'
 import { HomePage } from './pages/HomePage'
+import { OverviewPage } from './pages/OverviewPage'
 import { ParentsPage } from './pages/ParentsPage'
 
 const rootRoute = createRootRoute({ component: Outlet })
@@ -33,8 +34,15 @@ const parentsRoute = createRoute({
   component: ParentsPage,
 })
 
+const overviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/uebersicht',
+  validateSearch: z.object({ kid: z.string().optional().catch(undefined) }),
+  component: OverviewPage,
+})
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, brushRoute, parentsRoute]),
+  routeTree: rootRoute.addChildren([homeRoute, brushRoute, parentsRoute, overviewRoute]),
   defaultNotFoundComponent: () => <Navigate to="/" />,
   defaultErrorComponent: ErrorScreen,
 })

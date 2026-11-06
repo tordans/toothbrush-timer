@@ -103,10 +103,13 @@ export function HoldButton({
   className?: string
 }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [holding, setHolding] = useState(false)
+  const [hint, setHint] = useState(false)
 
   const start = () => {
     setHolding(true)
+    setHint(false)
     timer.current = setTimeout(() => {
       setHolding(false)
       onHold()
@@ -116,6 +119,14 @@ export function HoldButton({
     setHolding(false)
     clearTimeout(timer.current)
   }
+  /** Let go too early: explain that this button has to be held. */
+  const release = () => {
+    if (!holding) return
+    cancel()
+    setHint(true)
+    clearTimeout(hintTimer.current)
+    hintTimer.current = setTimeout(() => setHint(false), 2500)
+  }
 
   return (
     <button
@@ -123,7 +134,7 @@ export function HoldButton({
       aria-label={label}
       title={label}
       onPointerDown={start}
-      onPointerUp={cancel}
+      onPointerUp={release}
       onPointerLeave={cancel}
       onPointerCancel={cancel}
       onContextMenu={(e) => e.preventDefault()}
@@ -149,6 +160,14 @@ export function HoldButton({
           style={{ transition: holding ? `stroke-dashoffset ${ms}ms linear` : 'none' }}
         />
       </svg>
+      {hint && (
+        <span
+          role="status"
+          className="absolute right-0 top-full mt-2 whitespace-nowrap rounded-full bg-cream px-3 py-1.5 text-sm font-bold text-bark-800 shadow-lg"
+        >
+          Für Eltern: gedrückt halten
+        </span>
+      )}
     </button>
   )
 }
