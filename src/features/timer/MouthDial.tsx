@@ -1,9 +1,12 @@
 import { SECTIONS } from './sections'
 
 type Props = {
-  /** 0–3 brushing, 4 done. */
+  /** 0–3 brushing (or next corner during a break), 4 done. */
   sectionIndex: number
-  progress: number
+  /** 0–1 inside the current corner. */
+  sectionProgress: number
+  /** Short break before `sectionIndex`. */
+  switching: boolean
 }
 
 const CX = 100
@@ -26,26 +29,56 @@ const QUADRANT_TEETH = {
 } as const
 
 const RING_R = 94
-const RING = 2 * Math.PI * RING_R
 
-/** Two minutes as a ring, the mouth inside with the current corner shining. */
-export function MouthDial({ sectionIndex, progress }: Props) {
+/** Ring segment of one corner, in SVG degrees (0 = three o'clock, clockwise). */
+const ARC: Record<(typeof SECTIONS)[number]['id'], [number, number]> = {
+  'top-left': [180, 270],
+  'top-right': [270, 360],
+  'bottom-right': [0, 90],
+  'bottom-left': [90, 180],
+}
+
+function arcPath(from: number, to: number) {
+  const pad = 4 // small gap at the quarter marks
+  const a = ((from + pad) * Math.PI) / 180
+  const b = ((to - pad) * Math.PI) / 180
+  const x1 = 100 + RING_R * Math.cos(a)
+  const y1 = 100 + RING_R * Math.sin(a)
+  const x2 = 100 + RING_R * Math.cos(b)
+  const y2 = 100 + RING_R * Math.sin(b)
+  return `M${x1} ${y1} A${RING_R} ${RING_R} 0 0 1 ${x2} ${y2}`
+}
+
+/**
+ * The mouth inside a ring. The ring is split into the four corners; the segment of the corner
+ * being brushed fills up, next to the shining teeth.
+ */
+export function MouthDial({ sectionIndex, sectionProgress, switching }: Props) {
   return (
     <svg viewBox="0 0 200 200" className="h-full w-full" aria-hidden="true">
       <circle cx="100" cy="100" r={RING_R} fill="#fffaf0" opacity="0.92" />
-      <circle cx="100" cy="100" r={RING_R} fill="none" stroke="#e6d5bf" strokeWidth="8" />
-      <circle
-        cx="100"
-        cy="100"
-        r={RING_R}
-        fill="none"
-        stroke="#86ab52"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={RING}
-        strokeDashoffset={RING * (1 - progress)}
-        transform="rotate(-90 100 100)"
-      />
+      {SECTIONS.map((section, i) => {
+        const [from, to] = ARC[section.id]
+        const fill = i < sectionIndex ? 1 : i === sectionIndex && !switching ? sectionProgress : 0
+        const d = arcPath(from, to)
+        return (
+          <g key={section.id}>
+            <path d={d} fill="none" stroke="#e6d5bf" strokeWidth="9" strokeLinecap="round" />
+            {fill > 0 && (
+              <path
+                d={d}
+                pathLength={1}
+                fill="none"
+                stroke={i === sectionIndex ? '#f6c94c' : '#86ab52'}
+                strokeWidth="9"
+                strokeLinecap="round"
+                strokeDasharray="1 1"
+                strokeDashoffset={1 - fill}
+              />
+            )}
+          </g>
+        )
+      })}
       {/* quarter marks */}
       {[0, 90, 180, 270].map((a) => (
         <rect
@@ -75,10 +108,11 @@ export function MouthDial({ sectionIndex, progress }: Props) {
       />
 
       {SECTIONS.map((section, i) => {
-        const active = i === sectionIndex
+        const active = i === sectionIndex && !switching
+        const next = i === sectionIndex && switching
         const done = i < sectionIndex
         return (
-          <g key={section.id}>
+          <g key={section.id} className={next ? 'animate-blink' : undefined}>
             {QUADRANT_TEETH[section.id].map((t, j) => (
               <rect
                 key={j}
@@ -88,9 +122,9 @@ export function MouthDial({ sectionIndex, progress }: Props) {
                 height="16"
                 rx="5"
                 transform={`rotate(${t.angle} ${t.x} ${t.y})`}
-                fill={active ? '#ffffff' : done ? '#fbf6ea' : '#efe6d4'}
-                stroke={active ? '#f6c94c' : '#d9cbb2'}
-                strokeWidth={active ? 2.5 : 1.2}
+                fill={active || next ? '#ffffff' : done ? '#fbf6ea' : '#efe6d4'}
+                stroke={active || next ? '#f6c94c' : '#d9cbb2'}
+                strokeWidth={active || next ? 2.5 : 1.2}
               />
             ))}
             {done && <Sparkle {...sparkleSpot(section.jaw, section.side)} />}

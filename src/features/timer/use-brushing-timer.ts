@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { timerPosition, TOTAL_SECONDS } from './sections'
+import { TIMELINE_SECONDS, timerPosition } from './sections'
 
 // Dev only: localStorage 'brush-speed' = 20 runs the two minutes in six seconds.
 const SPEED = import.meta.env.DEV ? Number(localStorage.getItem('brush-speed') ?? '1') || 1 : 1
@@ -7,6 +7,7 @@ const SPEED = import.meta.env.DEV ? Number(localStorage.getItem('brush-speed') ?
 export type Phase = 'ready' | 'running' | 'paused' | 'done'
 
 type Callbacks = {
+  /** A corner is done and the short break before `sectionIndex` begins. */
   onSectionChange: (sectionIndex: number) => void
   onDone: () => void
   /** The page was hidden and the timer paused itself. */
@@ -40,7 +41,7 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
       const pos = timerPosition(ms)
       setElapsedMs(ms)
       if (pos.done) {
-        accumulated.current = TOTAL_SECONDS * 1000
+        accumulated.current = TIMELINE_SECONDS * 1000
         since.current = null
         setPhase('done')
         finished()
@@ -89,7 +90,7 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
       setElapsedMs(0)
       setPhase('running')
     },
-    /** Elapsed seconds right now (for "stop early"). */
-    elapsedSeconds: () => Math.floor(read() / 1000),
+    /** Seconds brushed right now, breaks not counted (for "stop early"). */
+    brushedSeconds: () => Math.floor(timerPosition(read()).brushed),
   }
 }

@@ -79,17 +79,28 @@ class BrushingAudio {
     }
   }
 
-  sectionBell() {
+  /** Short rising jingle: this corner is done, move on to the next. */
+  switchJingle() {
     if (!this.ctx) return
-    this.bell(523.25, this.ctx.currentTime + 0.02, 0.35)
+    const t = this.ctx.currentTime + 0.02
+    this.bell(523.25, t, 0.28, 1.6)
+    this.bell(659.25, t + 0.14, 0.28, 1.6)
+    this.bell(783.99, t + 0.28, 0.32, 2.2)
   }
 
-  finishBells() {
+  /** A little melody at the end. */
+  finishMelody() {
     if (!this.ctx) return
     const t = this.ctx.currentTime + 0.05
-    this.bell(523.25, t, 0.3)
-    this.bell(659.25, t + 0.35, 0.3)
-    this.bell(783.99, t + 0.7, 0.35, 3.6)
+    const notes: [number, number][] = [
+      [523.25, 0],
+      [659.25, 0.18],
+      [783.99, 0.36],
+      [659.25, 0.6],
+      [783.99, 0.78],
+      [1046.5, 1.0],
+    ]
+    for (const [freq, at] of notes) this.bell(freq, t + at, 0.3, at === 1.0 ? 3.6 : 1.8)
   }
 
   startMusic() {

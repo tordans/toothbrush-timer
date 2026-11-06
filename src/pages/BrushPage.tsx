@@ -23,6 +23,14 @@ import { isoDay } from '@/lib/dates'
 
 const route = getRouteApi('/putzen')
 
+/** Where the animal sits around the dial for each corner. */
+const CORNER_POSITION = {
+  'top-left': { left: '-14%', top: '-10%' },
+  'top-right': { left: '78%', top: '-10%' },
+  'bottom-right': { left: '78%', top: '68%' },
+  'bottom-left': { left: '-14%', top: '68%' },
+} as const
+
 /** Brushed at least this long counts when stopping early (and the child confirms). */
 const MIN_COUNT_SECONDS = 60
 
@@ -50,11 +58,11 @@ export function BrushPage() {
 
   const timer = useBrushingTimer({
     onSectionChange: () => {
-      if (gong) brushingAudio.sectionBell()
+      if (gong) brushingAudio.switchJingle()
     },
     onDone: () => {
       brushingAudio.stopMusic()
-      if (gong) brushingAudio.finishBells()
+      if (gong) brushingAudio.finishMelody()
       allowScreenOff()
       record(TOTAL_SECONDS)
     },
@@ -127,6 +135,7 @@ export function BrushPage() {
 
   const { position } = timer
   const section = SECTIONS[position.sectionIndex]
+  const corner = section ?? SECTIONS[0]
   const evening = slot === 'evening'
 
   return (
@@ -167,9 +176,31 @@ export function BrushPage() {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 landscape:flex-row landscape:gap-10">
           {/* dial with the animal */}
           <div className="relative h-[min(78vw,46vh)] w-[min(78vw,46vh)] shrink-0 landscape:h-[min(42vw,62vh)] landscape:w-[min(42vw,62vh)]">
-            <MouthDial sectionIndex={position.sectionIndex} progress={position.progress} />
-            <div className="absolute -bottom-2 -right-6 w-[38%] animate-bob sm:-right-10">
-              <Animal animal={kid.animal} brushing={timer.phase === 'running'} />
+            <MouthDial
+              sectionIndex={position.sectionIndex}
+              sectionProgress={position.sectionProgress}
+              switching={position.switching}
+            />
+            {/* The animal sits at the corner being brushed and walks on during the break. */}
+            <div
+              className="absolute w-[36%]"
+              style={{
+                ...CORNER_POSITION[corner?.id ?? 'top-left'],
+                transition: 'left 1.4s ease-in-out, top 1.4s ease-in-out',
+              }}
+            >
+              <div style={{ transform: corner?.side === 'right' ? 'scaleX(-1)' : undefined }}>
+                <div
+                  className={
+                    position.switching && timer.phase === 'running' ? 'animate-wave' : 'animate-bob'
+                  }
+                >
+                  <Animal
+                    animal={kid.animal}
+                    brushing={timer.phase === 'running' && !position.switching}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -189,9 +220,11 @@ export function BrushPage() {
             ) : (
               <>
                 <p className="text-sm font-bold uppercase tracking-wider opacity-70">
-                  Ecke {position.sectionIndex + 1} von 4
+                  {position.switching ? 'Wechseln!' : `Ecke ${position.sectionIndex + 1} von 4`}
                 </p>
-                <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
+                <h1 className="text-4xl font-extrabold sm:text-5xl">
+                  {position.switching ? `Gleich: ${section?.label}` : section?.label}
+                </h1>
                 <p className="text-2xl font-bold tabular-nums opacity-80">
                   noch {clockLabel(position.totalRemaining)}
                 </p>
@@ -230,13 +263,13 @@ export function BrushPage() {
 
       {askStop && (
         <StopDialog
-          elapsed={timer.elapsedSeconds()}
+          elapsed={timer.brushedSeconds()}
           onContinue={() => {
             setAskStop(false)
             resume()
           }}
           onCount={() => {
-            record(timer.elapsedSeconds())
+            record(timer.brushedSeconds())
             void navigate({ to: '/' })
           }}
           onDiscard={() => void navigate({ to: '/' })}
@@ -263,14 +296,19 @@ function Done({
           className="h-36 w-32 landscape:h-[38vh] landscape:w-auto"
           aria-hidden="true"
         >
-          {evening ? (
-            <EveningLantern x={-14} y={0} lit s={2} />
-          ) : (
-            <MorningFlower x={0} y={0} open s={2} />
-          )}
+          <g className="origin-bottom animate-pop">
+            {evening ? (
+              <EveningLantern x={-14} y={0} lit s={2} />
+            ) : (
+              <MorningFlower x={0} y={0} open s={2} />
+            )}
+          </g>
         </svg>
-        <div className="w-32 animate-hop landscape:w-[30vh]">
-          <Animal animal={animal} />
+        <div className="relative w-32 landscape:w-[30vh]">
+          <Sparkles />
+          <div className="animate-hop">
+            <Animal animal={animal} />
+          </div>
         </div>
       </div>
       <div className="flex flex-col items-center gap-3 landscape:items-start">
@@ -314,6 +352,40 @@ function StopDialog({
           Nicht eintragen
         </Button>
       </Card>
+    </div>
+  )
+}
+
+/** Little stars that float up around the animal at the end. */
+function Sparkles() {
+  const stars = [
+    { left: '0%', delay: '0s', size: 18 },
+    { left: '20%', delay: '0.6s', size: 12 },
+    { left: '45%', delay: '1.1s', size: 20 },
+    { left: '70%', delay: '0.3s', size: 14 },
+    { left: '90%', delay: '0.9s', size: 16 },
+    { left: '35%', delay: '1.6s', size: 10 },
+  ]
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-1/3" aria-hidden="true">
+      {stars.map((star) => (
+        <svg
+          key={star.left}
+          viewBox="-10 -10 20 20"
+          className="absolute animate-rise"
+          style={{
+            left: star.left,
+            width: star.size,
+            height: star.size,
+            animationDelay: star.delay,
+          }}
+        >
+          <path
+            d="M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5 Z"
+            fill="#f6c94c"
+          />
+        </svg>
+      ))}
     </div>
   )
 }

@@ -56,6 +56,25 @@ export default {
           '40%': { transform: 'translateY(-24px)' },
           '60%': { transform: 'translateY(-24px)' },
         },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.35' },
+        },
+        wave: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-12deg)' },
+          '75%': { transform: 'rotate(12deg)' },
+        },
+        rise: {
+          '0%': { opacity: '0', transform: 'translateY(0) scale(0.6)' },
+          '20%': { opacity: '1' },
+          '100%': { opacity: '0', transform: 'translateY(-160px) scale(1.1)' },
+        },
+        pop: {
+          '0%': { transform: 'scale(0.4)', opacity: '0' },
+          '60%': { transform: 'scale(1.12)', opacity: '1' },
+          '100%': { transform: 'scale(1)' },
+        },
         fadein: {
           from: { opacity: '0', transform: 'scale(0.96)' },
           to: { opacity: '1', transform: 'scale(1)' },
@@ -65,7 +84,11 @@ export default {
         bob: 'bob 3s ease-in-out infinite',
         brush: 'brush 0.5s ease-in-out infinite',
         glow: 'glow 3s ease-in-out infinite',
-        hop: 'hop 0.9s ease-in-out 2',
+        hop: 'hop 0.9s ease-in-out 4',
+        blink: 'blink 0.8s ease-in-out infinite',
+        wave: 'wave 0.6s ease-in-out infinite',
+        rise: 'rise 2.4s ease-out infinite',
+        pop: 'pop 0.7s ease-out both',
         fadein: 'fadein 0.4s ease-out both',
       },
     },

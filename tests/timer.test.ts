@@ -1,29 +1,37 @@
 import { describe, expect, it } from 'vitest'
-import { clockLabel, SECTIONS, timerPosition } from '@/features/timer/sections'
+import { clockLabel, SECTIONS, TIMELINE_SECONDS, timerPosition } from '@/features/timer/sections'
 import { slotForTime, weekDays } from '@/lib/dates'
 
 describe('timerPosition', () => {
   it('starts in the first corner with two minutes left', () => {
     const p = timerPosition(0)
     expect(p.sectionIndex).toBe(0)
+    expect(p.switching).toBe(false)
     expect(p.totalRemaining).toBe(120)
-    expect(p.sectionRemaining).toBe(30)
-    expect(p.done).toBe(false)
   })
 
-  it('moves to the next corner every 30 seconds', () => {
+  it('takes a 3 second break after each corner, which does not count as brushing', () => {
     expect(timerPosition(29_999).sectionIndex).toBe(0)
-    expect(timerPosition(30_000).sectionIndex).toBe(1)
-    expect(timerPosition(60_000).sectionIndex).toBe(2)
-    expect(timerPosition(119_000).sectionIndex).toBe(3)
+    const pause = timerPosition(31_000)
+    expect(pause.switching).toBe(true)
+    expect(pause.sectionIndex).toBe(1)
+    expect(pause.totalRemaining).toBe(90)
+    const second = timerPosition(33_000)
+    expect(second.switching).toBe(false)
+    expect(second.sectionIndex).toBe(1)
+    expect(second.sectionProgress).toBe(0)
+    expect(timerPosition(66_000).sectionIndex).toBe(2)
+    expect(timerPosition(99_000).sectionIndex).toBe(3)
+    expect(timerPosition(128_000).done).toBe(false)
   })
 
-  it('is done after two minutes and never goes beyond', () => {
+  it('is done after four corners and three breaks and never goes beyond', () => {
+    expect(TIMELINE_SECONDS).toBe(129)
     const p = timerPosition(500_000)
     expect(p.done).toBe(true)
     expect(p.sectionIndex).toBe(4)
     expect(p.totalRemaining).toBe(0)
-    expect(p.progress).toBe(1)
+    expect(p.brushed).toBe(120)
   })
 
   it('has four corners in a continuous order', () => {
