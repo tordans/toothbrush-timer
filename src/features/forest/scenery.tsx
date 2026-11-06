@@ -1,3 +1,5 @@
+import type { Slot } from '@/features/family/schema'
+
 /** Small forest pieces, each drawn around its own foot point (x, y) and scaled with `s`. */
 
 type At = { x: number; y: number; s?: number }
@@ -272,12 +274,22 @@ export function EveningLantern({ lit, ...p }: At & { lit: boolean }) {
 /** Sky and light by time of day, so the forest feels like "now". */
 export type DayLight = 'morning' | 'day' | 'evening' | 'night'
 
-export function dayLightFor(date: Date): DayLight {
+function dayLightFor(date: Date): DayLight {
   const h = date.getHours()
   if (h < 6 || h >= 21) return 'night'
   if (h < 10) return 'morning'
   if (h < 17) return 'day'
   return 'evening'
+}
+
+/**
+ * The light follows the morning/evening switch. When the switch matches the clock, the real time
+ * of day is shown (e.g. night at 21:00); otherwise a typical morning or evening sky.
+ */
+export function dayLightForSlot(slot: Slot, date: Date): DayLight {
+  const real = dayLightFor(date)
+  if (slot === 'morning') return real === 'morning' || real === 'day' ? real : 'morning'
+  return real === 'night' ? 'night' : 'evening'
 }
 
 export const SKY: Record<DayLight, [string, string]> = {

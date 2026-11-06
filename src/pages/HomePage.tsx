@@ -7,7 +7,7 @@ import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/f
 import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Slot } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
-import { dayLightFor, seasonFor } from '@/features/forest/scenery'
+import { dayLightForSlot, seasonFor } from '@/features/forest/scenery'
 import { usePortrait } from '@/hooks/use-media'
 import { useNow } from '@/hooks/use-now'
 import { isoDay, slotForTime, weekDays, weekdayShort, weekRangeLabel } from '@/lib/dates'
@@ -53,7 +53,7 @@ export function HomePage() {
         <ForestWeek
           days={dayStatus}
           animal={kid?.animal ?? null}
-          light={dayLightFor(now)}
+          light={dayLightForSlot(slot, now)}
           season={seasonFor(days[3] ?? now)}
           portrait={portrait}
         />

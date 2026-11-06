@@ -41,6 +41,8 @@ type Layout = {
   w: number
   h: number
   horizon: number
+  /** Top of the sky that is usually visible (landscape phones crop the top). */
+  skyTop: number
   stations: Pt[]
   pathStart: Pt
   pathEnd: Pt
@@ -55,8 +57,9 @@ type Layout = {
 
 const LANDSCAPE: Layout = {
   w: 1600,
-  h: 900,
+  h: 820,
   horizon: 430,
+  skyTop: 250,
   stations: Array.from({ length: 7 }, (_, i) => ({
     x: 150 + i * 216,
     y: i % 2 === 0 ? 690 : 560,
@@ -78,16 +81,16 @@ const LANDSCAPE: Layout = {
   ],
   front: [
     { kind: 'rock', x: 40, y: 800 },
-    { kind: 'fern', x: 120, y: 880 },
-    { kind: 'mushroom', x: 300, y: 820 },
-    { kind: 'grass', x: 470, y: 860 },
+    { kind: 'fern', x: 120, y: 805 },
+    { kind: 'mushroom', x: 300, y: 805 },
+    { kind: 'grass', x: 470, y: 805 },
     { kind: 'bush', x: 560, y: 510 },
-    { kind: 'mushroom', x: 760, y: 840, s: 1.2 },
-    { kind: 'fern', x: 980, y: 880 },
-    { kind: 'grass', x: 1090, y: 840 },
-    { kind: 'bush', x: 1250, y: 860 },
+    { kind: 'mushroom', x: 760, y: 805, s: 1.2 },
+    { kind: 'fern', x: 980, y: 805 },
+    { kind: 'grass', x: 1090, y: 805 },
+    { kind: 'bush', x: 1250, y: 805 },
     { kind: 'rock', x: 1420, y: 520, s: 0.8 },
-    { kind: 'mushroom', x: 1560, y: 850 },
+    { kind: 'mushroom', x: 1560, y: 805 },
     { kind: 'grass', x: 260, y: 520 },
     { kind: 'grass', x: 900, y: 520 },
   ],
@@ -97,6 +100,7 @@ const PORTRAIT: Layout = {
   w: 900,
   h: 1500,
   horizon: 210,
+  skyTop: 0,
   stations: Array.from({ length: 7 }, (_, i) => ({
     x: i % 2 === 0 ? 300 : 610,
     y: 330 + i * 178,
@@ -148,9 +152,9 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
   const id = useId().replace(/:/g, '')
   const L = portrait ? PORTRAIT : LANDSCAPE
   const path = smoothPath([L.pathStart, ...L.stations, L.pathEnd])
-  const [skyTop, skyBottom] = SKY[light]
   const dark = light === 'night' || light === 'evening'
   const ground = GROUND[season]
+  const meadow = `M0 ${L.horizon + 30} Q${L.w * 0.5} ${L.horizon - 10} ${L.w} ${L.horizon + 30} V${L.h} H0 Z`
   const todayIndex = days.findIndex((d) => d.isToday)
   const todayStation = todayIndex >= 0 ? L.stations[todayIndex] : undefined
 
@@ -163,23 +167,38 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
       aria-label="Die Woche im Wald"
     >
       <defs>
-        <linearGradient id={`sky${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor={skyTop} />
-          <stop offset="1" stopColor={skyBottom} />
+        {DAY_LIGHTS.map((l) => (
+          <linearGradient key={l} id={`sky-${l}${id}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor={SKY[l][0]} />
+            <stop offset="1" stopColor={SKY[l][1]} />
+          </linearGradient>
+        ))}
+        <linearGradient id={`ground-light${id}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor={ground.light[0]} />
+          <stop offset="1" stopColor={ground.light[1]} />
         </linearGradient>
-        <linearGradient id={`ground${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor={(dark ? ground.dark : ground.light)[0]} />
-          <stop offset="1" stopColor={(dark ? ground.dark : ground.light)[1]} />
+        <linearGradient id={`ground-dark${id}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor={ground.dark[0]} />
+          <stop offset="1" stopColor={ground.dark[1]} />
         </linearGradient>
       </defs>
 
-      <rect width={L.w} height={L.h} fill={`url(#sky${id})`} />
-      <SkyDecor light={light} w={L.w} horizon={L.horizon} />
+      {/* Sky: one layer per light, cross-faded, so switching morning/evening animates. */}
+      {DAY_LIGHTS.map((l) => (
+        <rect
+          key={l}
+          width={L.w}
+          height={L.h}
+          fill={`url(#sky-${l}${id})`}
+          style={{ ...FADE, opacity: l === light ? 1 : 0 }}
+        />
+      ))}
+      <SkyDecor light={light} w={L.w} top={L.skyTop} horizon={L.horizon} />
 
       {/* distant hills */}
       <path
         d={`M0 ${L.horizon} Q${L.w * 0.2} ${L.horizon - 90} ${L.w * 0.42} ${L.horizon - 20} T${L.w * 0.8} ${L.horizon - 40} T${L.w} ${L.horizon - 10} V${L.h} H0 Z`}
-        fill={dark ? ground.hills[1] : ground.hills[0]}
+        style={{ fill: dark ? ground.hills[1] : ground.hills[0], transition: 'fill 1.4s ease' }}
         opacity="0.8"
       />
       {L.back.map((t, i) =>
@@ -190,11 +209,9 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
         ),
       )}
 
-      {/* meadow */}
-      <path
-        d={`M0 ${L.horizon + 30} Q${L.w * 0.5} ${L.horizon - 10} ${L.w} ${L.horizon + 30} V${L.h} H0 Z`}
-        fill={`url(#ground${id})`}
-      />
+      {/* meadow: light and dark layer, cross-faded */}
+      <path d={meadow} fill={`url(#ground-light${id})`} />
+      <path d={meadow} fill={`url(#ground-dark${id})`} style={{ ...FADE, opacity: dark ? 1 : 0 }} />
 
       {/* the path */}
       <path d={path} fill="none" stroke="#c9a676" strokeWidth="64" strokeLinecap="round" />
@@ -298,32 +315,64 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
   )
 }
 
-function SkyDecor({ light, w, horizon }: { light: DayLight; w: number; horizon: number }) {
-  if (light === 'night') {
-    return (
-      <g>
-        <circle cx={w * 0.82} cy={horizon * 0.35} r="34" fill="#f4f1d8" />
-        <circle cx={w * 0.82 + 14} cy={horizon * 0.35 - 8} r="30" fill="#1f2347" />
+const FADE = { transition: 'opacity 1.4s ease' } as const
+const DAY_LIGHTS: DayLight[] = ['morning', 'day', 'evening', 'night']
+const MOVE = { transition: 'transform 1.6s ease, opacity 1.4s ease' } as const
+
+/** Sun, moon, stars and clouds are always drawn and move or fade when the light changes. */
+function SkyDecor({
+  light,
+  w,
+  top,
+  horizon,
+}: {
+  light: DayLight
+  w: number
+  top: number
+  horizon: number
+}) {
+  // Positions inside the visible sky; "below the horizon" hides behind the hills.
+  const sky = (f: number) => top + (horizon - top) * f
+  const sunY = {
+    morning: sky(0.45),
+    day: sky(0.3),
+    evening: sky(0.85),
+    night: horizon + 160,
+  }[light]
+  const moonY = light === 'night' ? sky(0.4) : horizon + 160
+  const starOpacity = { morning: 0, day: 0, evening: 0.35, night: 0.85 }[light]
+  const cloudOpacity = { morning: 0.85, day: 0.9, evening: 0.45, night: 0 }[light]
+  return (
+    <g>
+      <g style={{ ...FADE, opacity: starOpacity }}>
         {Array.from({ length: 24 }, (_, i) => (
           <circle
             key={i}
             cx={(i * 397) % w}
-            cy={((i * 131) % (horizon - 60)) + 20}
+            cy={top + 10 + ((i * 131) % Math.max(horizon - top - 70, 40))}
             r={i % 3 === 0 ? 2.6 : 1.6}
             fill="#fff8d6"
-            opacity="0.8"
           />
         ))}
       </g>
-    )
-  }
-  const sunY = light === 'evening' ? horizon - 60 : horizon * 0.35
-  return (
-    <g>
-      <circle cx={w * 0.8} cy={sunY} r="70" fill="#fff3c4" opacity="0.5" />
-      <circle cx={w * 0.8} cy={sunY} r="42" fill={light === 'evening' ? '#f7a96b' : '#ffe08a'} />
-      <Cloud x={w * 0.2} y={horizon * 0.3} />
-      <Cloud x={w * 0.55} y={horizon * 0.18} s={0.7} />
+      <g style={{ ...MOVE, transform: `translate(${w * 0.8}px, ${sunY}px)` }}>
+        <circle r="70" fill="#fff3c4" opacity="0.5" />
+        <circle
+          r="42"
+          style={{
+            fill: light === 'evening' ? '#f7a96b' : '#ffe08a',
+            transition: 'fill 1.4s ease',
+          }}
+        />
+      </g>
+      <g style={{ ...MOVE, transform: `translate(${w * 0.82}px, ${moonY}px)` }}>
+        <circle r="34" fill="#f4f1d8" />
+        <circle cx="14" cy="-8" r="30" fill="#1f2347" />
+      </g>
+      <g style={{ ...FADE, opacity: cloudOpacity }}>
+        <Cloud x={w * 0.2} y={sky(0.35)} />
+        <Cloud x={w * 0.55} y={sky(0.2)} s={0.7} />
+      </g>
     </g>
   )
 }
