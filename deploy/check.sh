@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Checks a deployed site: health with the expected commit, routing, caching, 401 without key.
+# Checks a deployed site: health with the expected commit, routing, caching, the database (and so
+# the migrations), 401 / 403 without key or invite word.
 # Usage: deploy/check.sh <base-url> <expected-commit>
-# Env:   FAMILY_KEY   optional, also checks that the family key is accepted (read only)
-#        SUMMARY_FILE optional, a markdown table is appended there (GitHub step summary)
+# Env:   SUMMARY_FILE optional, a markdown table is appended there (GitHub step summary)
+# Nothing is created or changed on the site. The wrong-invite request below counts as one failed
+# attempt for the runner's IP address (expires after an hour), the wrong key as one for the throttle.
 # Works against the local test stack too: deploy/check.sh http://localhost:8088 dev
 set -u
 
@@ -47,13 +49,17 @@ result() {
 live=1
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
   fetch "$base/api/health"
-  if [ "$status" = "200" ] && grep -q "\"commit\":\"$expected_commit\"" "$tmp/body" && grep -q '"db":true' "$tmp/body"; then
+  if [ "$status" = "200" ] && grep -q "\"commit\":\"$expected_commit\"" "$tmp/body"; then
     live=0
     break
   fi
   sleep 5
 done
-result "GET /api/health shows the new commit and a working database" "$live" "status $status, $(head -c 200 "$tmp/body" | tr '\n' ' ')"
+result "GET /api/health shows the new commit" "$live" "status $status, $(head -c 200 "$tmp/body" | tr '\n' ' ')"
+
+# The database works and the API migrated it: a wrong invite word is 403 only after the tables exist.
+fetch -X POST -H 'Content-Type: application/json' --data '{"invite":"check-with-a-wrong-word"}' "$base/api/families"
+result "POST /api/families with a wrong invite word is 403 (database works)" "$([ "$status" = "403" ] && grep -q 'invalid_invite' "$tmp/body" && echo 0 || echo 1)" "status $status, $(head -c 100 "$tmp/body" | tr '\n' ' ')"
 
 fetch "$base/"
 index_ok=1
@@ -82,12 +88,11 @@ result "Unknown path falls back to the app" "$path_ok" "status $status"
 fetch "$base/api/state"
 result "GET /api/state without key is 401" "$([ "$status" = "401" ] && echo 0 || echo 1)" "status $status"
 
-if [ -n "${FAMILY_KEY:-}" ]; then
-  fetch -H "Authorization: Bearer $FAMILY_KEY" "$base/api/state"
-  key_ok=1
-  [ "$status" = "200" ] && grep -q '"version"' "$tmp/body" && key_ok=0
-  result "GET /api/state with the family key works" "$key_ok" "status $status"
-fi
+fetch -H "Authorization: Bearer check-with-a-wrong-key" "$base/api/state"
+result "GET /api/state with a wrong key is 401" "$([ "$status" = "401" ] && echo 0 || echo 1)" "status $status"
+
+fetch -X POST "$base/api/family/key"
+result "POST /api/family/key without key is 401" "$([ "$status" = "401" ] && echo 0 || echo 1)" "status $status"
 
 for dotfile in /.ftp-deploy-sync-state.json /.htaccess; do
   fetch "$base$dotfile"

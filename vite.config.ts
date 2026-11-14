@@ -28,8 +28,9 @@ export default defineConfig({
   server: {
     port: 5287,
     strictPort: true,
-    // Local API: `bun run api-up` starts PHP + MariaDB in Docker on port 8088.
-    proxy: { '/api': 'http://localhost:8088' },
+    // Local API: `bun run api-up` starts PHP + MariaDB in Docker on port 8088
+    // (BRUSH_API_PORT overrides it, same variable as api/tests/compose.yml).
+    proxy: { '/api': `http://localhost:${process.env.BRUSH_API_PORT ?? '8088'}` },
     fs: {
       allow: [
         searchForWorkspaceRoot(import.meta.dirname),

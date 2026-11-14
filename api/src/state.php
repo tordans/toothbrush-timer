@@ -2,20 +2,26 @@
 declare(strict_types=1);
 
 /**
- * The stored document is kept as raw JSON text, so reads never re-encode it.
- * Returns ['data' => <json text>, 'version' => int, 'updated_at' => ?string].
+ * The stored document of a family, kept as raw JSON text so reads never re-encode it.
+ * Returns ['data' => <json text>, 'version' => int, 'updated_at' => ?string], or null if the
+ * family does not exist (deleted by hand while the request ran).
  */
-function state_read(PDO $pdo, bool $forUpdate = false): array
+function state_read(PDO $pdo, int $familyId, bool $forUpdate = false): ?array
 {
-    $row = $pdo->query('SELECT data, version, updated_at FROM state WHERE id = 1' . ($forUpdate ? ' FOR UPDATE' : ''))->fetch();
+    $stmt = $pdo->prepare('SELECT data, version, updated_at FROM families WHERE id = ?' . ($forUpdate ? ' FOR UPDATE' : ''));
+    $stmt->execute([$familyId]);
+    $row = $stmt->fetch();
     if (!$row) {
-        return ['data' => 'null', 'version' => 0, 'updated_at' => null];
+        return null;
     }
     $version = (int) $row['version'];
+    if ($version === 0 || $row['data'] === null) {
+        return ['data' => 'null', 'version' => 0, 'updated_at' => null];
+    }
     return [
         'data' => (string) $row['data'],
         'version' => $version,
-        'updated_at' => $version === 0 ? null : iso_from_db((string) $row['updated_at']),
+        'updated_at' => iso_from_db((string) $row['updated_at']),
     ];
 }
 
@@ -31,22 +37,26 @@ function state_json(array $state, array $extra = []): string
 }
 
 /**
- * Replaces the document if the stored version equals $ifMatch.
- * Returns ['ok' => true, 'version' => int, 'updated_at' => string] or ['ok' => false, 'state' => array].
+ * Replaces the document of the family if its stored version equals $ifMatch.
+ * Returns ['ok' => true, 'version' => int, 'updated_at' => string], ['ok' => false, 'state' => array]
+ * for a version conflict, or null if the family no longer exists.
  */
-function state_write(PDO $pdo, int $ifMatch, string $dataJson): array
+function state_write(PDO $pdo, int $familyId, int $ifMatch, string $dataJson): ?array
 {
-    $pdo->exec("INSERT IGNORE INTO state (id, data, version, updated_at) VALUES (1, 'null', 0, UTC_TIMESTAMP(3))");
     $pdo->beginTransaction();
     try {
-        $current = state_read($pdo, true);
+        $current = state_read($pdo, $familyId, true);
+        if ($current === null) {
+            $pdo->rollBack();
+            return null;
+        }
         if ($current['version'] !== $ifMatch) {
             $pdo->rollBack();
             return ['ok' => false, 'state' => $current];
         }
-        $stmt = $pdo->prepare('UPDATE state SET data = ?, version = version + 1, updated_at = UTC_TIMESTAMP(3) WHERE id = 1');
-        $stmt->execute([$dataJson]);
-        $new = state_read($pdo);
+        $stmt = $pdo->prepare('UPDATE families SET data = ?, version = version + 1, updated_at = UTC_TIMESTAMP(3) WHERE id = ?');
+        $stmt->execute([$dataJson, $familyId]);
+        $new = state_read($pdo, $familyId);
         $pdo->commit();
         return ['ok' => true, 'version' => $new['version'], 'updated_at' => $new['updated_at']];
     } catch (Throwable $e) {

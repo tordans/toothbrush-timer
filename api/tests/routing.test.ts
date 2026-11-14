@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
-import { api, BASE, clearThrottle } from './helpers'
+import { api, BASE, resetAll } from './helpers'
 
-beforeAll(() => clearThrottle())
+beforeAll(resetAll)
 
 describe('health and unauthorized', () => {
   test('GET /api/health needs no key', async () => {
     const res = await api('/api/health', { key: null })
     expect(res.status).toBe(200)
-    expect(res.json).toEqual({ ok: true, commit: 'dev', db: true })
+    expect(res.json).toEqual({ ok: true, commit: 'dev' })
     expect(res.headers.get('cache-control')).toBe('no-store')
     expect(res.headers.get('content-type')).toContain('application/json')
   })
@@ -34,6 +34,16 @@ describe('health and unauthorized', () => {
     const res = await api('/api/nothing-here', { key: null })
     expect(res.status).toBe(404)
     expect(res.json).toEqual({ error: 'not_found' })
+  })
+
+  test('the removed endpoints are gone', async () => {
+    for (const route of ['/api/migrate', '/api/mcp']) {
+      for (const method of ['GET', 'POST']) {
+        const res = await api(route, { method, key: 'whatever' })
+        expect(res.status).toBe(404)
+        expect(res.json).toEqual({ error: 'not_found' })
+      }
+    }
   })
 
   test('wrong method is 405', async () => {
@@ -91,7 +101,7 @@ describe('.htaccess routing', () => {
   test('server files are not reachable', async () => {
     for (const route of ['/config/config.php', '/api/src/bootstrap.php', '/logs/api.log']) {
       const res = await api(route, { key: null })
-      expect(res.text).not.toContain('family_key_hash')
+      expect(res.text).not.toContain('invite_sha256')
       expect(res.text).not.toContain('<?php')
     }
   })

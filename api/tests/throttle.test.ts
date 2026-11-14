@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { api, clearThrottle, FAMILY_KEY } from './helpers'
+import { api, clearThrottle, createFamily, resetAll } from './helpers'
 
-beforeAll(() => clearThrottle())
+let familyKey = ''
+
+beforeAll(async () => {
+  await resetAll()
+  familyKey = await createFamily()
+})
 afterAll(() => clearThrottle())
 
 test('after 20 wrong keys the client gets 429, even with the right key', async () => {
@@ -14,12 +19,12 @@ test('after 20 wrong keys the client gets 429, even with the right key', async (
   expect(blocked.json.error).toBe('too_many_attempts')
   expect(blocked.headers.get('retry-after')).toBe('600')
 
-  expect((await api('/api/state', { key: FAMILY_KEY })).status).toBe(429)
+  expect((await api('/api/state', { key: familyKey })).status).toBe(429)
   // health stays reachable
   expect((await api('/api/health', { key: null })).status).toBe(200)
 
   clearThrottle()
-  expect((await api('/api/state', { key: FAMILY_KEY })).status).toBe(200)
+  expect((await api('/api/state', { key: familyKey })).status).toBe(200)
 })
 
 test('a missing key is not counted as a failed attempt', async () => {
@@ -27,5 +32,5 @@ test('a missing key is not counted as a failed attempt', async () => {
   for (let i = 0; i < 25; i++) {
     expect((await api('/api/state', { key: null })).status).toBe(401)
   }
-  expect((await api('/api/state', { key: FAMILY_KEY })).status).toBe(200)
+  expect((await api('/api/state', { key: familyKey })).status).toBe(200)
 })

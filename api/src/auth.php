@@ -66,17 +66,35 @@ function throttle_check(): void
     }
 }
 
-/** Requires a bearer key whose SHA-256 matches the configured hash, else 429 / 401. */
-function require_key(string $configHashName): void
+/** SHA-256 hex of a family key. Only this is stored, never the key. */
+function key_hash(string $key): string
+{
+    return hash('sha256', $key);
+}
+
+/** A new family key: 32 random bytes as base64url (43 characters). */
+function generate_key(): string
+{
+    return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+}
+
+/**
+ * Finds the family of the bearer key. Returns its row ['id' => int, 'key_sha256' => string].
+ * Answers 429 for an IP with too many wrong keys, 401 for a missing or unknown key.
+ */
+function require_family(): array
 {
     throttle_check();
     $token = bearer_token();
-    $expected = (string) (brush_config()[$configHashName] ?? '');
     if ($token === null) {
         respond_error(401, 'unauthorized');
     }
-    if ($expected === '' || !hash_equals($expected, hash('sha256', $token))) {
+    $stmt = db()->prepare('SELECT id, key_sha256 FROM families WHERE key_sha256 = ?');
+    $stmt->execute([key_hash($token)]);
+    $family = $stmt->fetch();
+    if (!$family) {
         throttle_register_failure();
         respond_error(401, 'unauthorized');
     }
+    return ['id' => (int) $family['id'], 'key_sha256' => (string) $family['key_sha256']];
 }

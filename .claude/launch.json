@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "brushing-sparks",
+      "name": "toothbrush-timer",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["--bun", "vite", "--port", "5287", "--strictPort"],
       "port": 5287

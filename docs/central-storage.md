@@ -1,126 +1,188 @@
 # Central storage
 
-The family's data lives on a server so that all phones and tablets see the same state. The app and
-its small PHP API are served from the same web space and deployed by one GitHub Actions workflow.
-There are no user accounts: access works through one secret link.
+Families keep their data on a server so that all of their phones and tablets see the same state.
+The app and its small PHP API are served from the same web space and deployed by one GitHub
+Actions workflow. There are no user accounts: a family is one secret link, and a new family can
+only be created by someone who knows the invite word.
 
 ## What is stored
 
-One JSON document called the **state**, saved as a whole in one database row (table `state`). The
-API does not look inside it; the app owns the format. Limits: a JSON object, at most 256 KiB.
+One row per family in the table `families`:
 
-Each save raises a **version** number. A save must say which version it was based on (`If-Match`).
-If someone else saved in between, the server answers `409` with the current state, so the app can
-merge and try again. Two writers can never both win: the check runs in a database transaction with a
-row lock.
+| Column       | What it is                                                                       |
+| ------------ | -------------------------------------------------------------------------------- |
+| `id`         | Number, only used inside the database.                                           |
+| `key_sha256` | SHA-256 of the family key (unique). The key itself is never stored.              |
+| `data`       | The family's **state**, one JSON document, saved as a whole. `NULL` until saved. |
+| `version`    | Counts saves, 0 before the first one.                                            |
+| `created_at` | When the family was created (UTC).                                               |
+| `updated_at` | Time of the last save (UTC), `NULL` before the first one.                        |
+
+The API does not look inside the state; the app owns the format. Limits: a JSON object, at most
+256 KiB.
+
+Each save raises the **version**. A save must say which version it was based on (`If-Match`). If
+another device saved in between, the server answers `409` with the current state, so the app can
+merge and try again. Two writers can never both win: the check runs in a database transaction with
+a row lock.
+
+The table `invite_attempts` holds failed invite attempts for one hour: a hash of the IP address
+(with a salt that changes every day, so the address itself is never stored) and a time.
 
 ## Endpoints
 
 All responses are JSON with `Cache-Control: no-store`. Authentication is
-`Authorization: Bearer <key>`. There are no CORS headers: app and API share one origin, and local
-development uses the Vite proxy.
+`Authorization: Bearer <family key>`. There are no CORS headers: app and API share one origin, and
+local development uses the Vite proxy.
 
-| Request             | Key        | Answer                                                                                                  |
-| ------------------- | ---------- | ------------------------------------------------------------------------------------------------------- |
-| `GET /api/health`   | none       | `{ ok, commit, db }`. `503` if the database is not reachable.                                           |
-| `GET /api/state`    | family key | `{ data, version, updated_at }`. Before the first save: `data: null`, `version: 0`, `updated_at: null`. |
-| `PUT /api/state`    | family key | Header `If-Match: "<version>"`, body `{ "data": { ... } }`. Answer `{ version, updated_at }`.           |
-| `POST /api/migrate` | deploy key | Applies pending `api/migrations/*.sql` in order. Answer `{ applied: [names] }`. Safe to repeat.         |
-| `POST /api/mcp`     | MCP key    | Debugging endpoint for agents, see below.                                                               |
+| Request                | Needs               | Answer                                                                                        |
+| ---------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| `GET /api/health`      | nothing             | `{ ok, commit }`. Does not use the database.                                                  |
+| `POST /api/families`   | invite word in body | Body `{ "invite": "<word>" }`. `201 { key }`: the new family key, shown only this once.       |
+| `GET /api/state`       | family key          | `{ data, version, updated_at }`. New family: `data: null`, `version: 0`, `updated_at: null`.  |
+| `PUT /api/state`       | family key          | Header `If-Match: "<version>"`, body `{ "data": { ... } }`. Answer `{ version, updated_at }`. |
+| `POST /api/family/key` | family key          | `200 { key }`: a new key. The old key stops working at once.                                  |
 
-Errors: `401` wrong or missing key, `428` missing `If-Match`, `409` version conflict (body has the
-current `data`, `version`, `updated_at`), `400` body is not `{ "data": <object> }`, `413` more than
-256 KiB, `429` too many wrong keys, `405` wrong method, `404` unknown route. Timestamps are UTC with
-milliseconds, for example `2026-11-05T21:40:00.123Z`.
+Errors for `/api/state` and `/api/family/key`: `401` wrong or missing key, `428` missing
+`If-Match`, `409` version conflict (the body has the current `data`, `version`, `updated_at`),
+`400` body is not `{ "data": <object> }`, `413` more than 256 KiB, `429` too many wrong keys.
+Everywhere: `405` wrong method (with an `Allow` header), `404` unknown route, `500` server error
+(`{ "error": "internal" }`, details in the log). Timestamps are UTC with milliseconds, for example
+`2026-11-05T21:40:00.123Z`.
 
-Wrong keys are counted per IP address. After 20 wrong keys within 10 minutes the address gets `429`
-for the rest of the window (even with the right key). Requests without any key are not counted.
+Errors for `POST /api/families`: `403 invalid_invite` (wrong word), `400` body is not a JSON
+object, `413` body larger than 4 KiB, `429 too_many_attempts` (10 wrong words from one IP address
+within an hour; even the right word is refused until the hour is over), `429 too_many_new_families`
+(5 families were created in the last 24 hours, by anyone), `503 families_full` (100 families exist).
+Delete a family (below) to make room.
 
-### MCP endpoint
+Wrong family keys are counted per IP address, separately from wrong invite words. After 20 wrong
+keys within 10 minutes the address gets `429` for the rest of the window (even with a right key).
+Requests without any key are not counted.
 
-`POST /api/mcp` with `Authorization: Bearer <MCP_KEY>` is a small stateless JSON-RPC endpoint
-(`initialize`, `tools/list`, `tools/call`). It is the only way to look inside the server, because
-there is no SSH. Read tools: `status` (PHP version, commit, schema version, database, disk use),
-`read_log` (last lines of the API log), `query` (one `SELECT`, at most 200 rows, runs in a read-only
-transaction), `get_state`. The write tools `put_state` and `migrate` exist only when the GitHub
-repository variable `MCP_ALLOW_WRITE` is `1` at deploy time.
+The API creates and updates its database tables itself, before the first request that needs the
+database (see "Database changes"). `GET /api/health` never touches the database, so it also answers
+while the database is down.
 
-## The family link and the key
+## Invite word, family link and key
 
-The link is `https://brush.ingsparks.de/#key=<FAMILY_KEY>`. One key, read and write; there is no
-view-only link. The key stands after `#`, so browsers never send it to the web server in a page
-request and it does not end up in server logs or the `Referer` header. Only the app's own API
-calls carry it, in the `Authorization` header.
+The **invite word** is chosen by the owner and only given to people who may start a family. The
+server stores only its SHA-256 (in `config/config.php`, outside the document root) and compares it
+with `hash_equals`. Hand it out in person, not in public places.
 
-The server stores only the SHA-256 hash of the key (in `config/config.php`, outside the document
-root) and compares it with `hash_equals`. The key itself exists only in the GitHub secret and in the
-link you hand out.
+Someone who enters the invite word in the app gets a new **family key**: 32 random bytes, written
+as 43 URL-safe characters, made by the server. The family link is
+`https://brush.ingsparks.de/#key=<key>`. The key stands after `#`, so browsers never send it to the
+web server in a page request and it does not end up in server logs or the `Referer` header. Only
+the app's own API calls carry it, in the `Authorization` header. The server stores only the SHA-256
+of the key, so even the owner of the server cannot read a key back. A lost key cannot be recovered.
 
-Do not post the link in public places. Whoever has it can read and change the state.
+Do not post a family link in public places. Whoever has it can read and change that family's
+state, and only that family's.
 
-### Rotate the link
+### Renew a family link
 
-1. Create a new key: `openssl rand -hex 32`.
-2. In GitHub, repository settings, Environments, `production`: replace the secret `FAMILY_KEY`.
-3. Run the workflow: Actions, Deploy, Run workflow.
-4. When it is green, the old link is dead. Send `https://brush.ingsparks.de/#key=<new key>` to the
-   family. The stored data stays; only access changes.
+If a link leaks, the family renews it in the app. The app calls `POST /api/family/key` with the
+current key and shows the new link. The old link stops working at once; the stored data stays.
+Devices that still use the old link get `401` and have to be opened with the new link.
 
-`DEPLOY_KEY` and `MCP_KEY` rotate the same way.
+### Delete a family by hand
+
+There is no delete endpoint. In phpMyAdmin (KAS, Tools, Databases), open the database and the
+table `families`. Find the family by `created_at`, `updated_at` and the size of its data, then
+delete the row (or run `DELETE FROM families WHERE id = <id>;`). Its key is invalid from then on and
+the place is free again for the limit of 100 families. The data cannot be restored; make an export of
+the row first if in doubt. The same table shows how many families exist.
+
+### Change the invite word
+
+Pick a new word and run `scripts/setup-deploy-secrets.sh` again (or only
+`gh secret set INVITE_SHA256 --env production` with the new hash), then run the workflow
+("Run workflow"). Families that exist are not affected.
 
 ## One-time steps for the owner in all-inkl KAS
 
-These cannot be done from the repository.
+These cannot be done from the repository. Do them in this order.
 
-1. **Folder and subdomain.** Create the subdomain `brush.ingsparks.de` with target directory
-   `brush/public/`. Choose PHP 8.4 for it. Enable Let's Encrypt for the subdomain.
-2. **Database.** Create a MariaDB database and user (Tools, Databases). Note host, database name,
-   user and password. phpMyAdmin is available there if you ever need to look at the data.
-3. **FTP user.** Create an FTP user whose root is the folder `brush/`. The deploy then cannot touch
-   anything else in the account. FTP uses explicit FTPS on port 21 (no SFTP at all-inkl).
-4. **GitHub environment.** In the repository create the environment `production` and add the
-   secrets below.
+1. **Subdomain.** KAS, Domain, Subdomain: add `brush` under `ingsparks.de`. KAS creates the folder
+   `brush.ingsparks.de/`. Change the target of the subdomain to its subfolder
+   **`brush.ingsparks.de/public/`**, so that `config/`, `api/` and `logs/` next to it are not
+   reachable from the web. Create `public/` first (via FTP or the KAS file manager) if KAS insists
+   on an existing folder.
+2. **PHP.** For the subdomain choose PHP 8.4 or newer. Needed extensions: `pdo_mysql`, `mbstring`,
+   `openssl`.
+3. **TLS.** Enable Let's Encrypt for `brush.ingsparks.de` and wait until
+   `https://brush.ingsparks.de/` answers (an error page is fine before the first deploy). The
+   `.htaccess` redirects http to https and sends HSTS, so TLS must work before the first deploy.
+4. **Database.** KAS, Tools, Databases: create a MariaDB database and user. Note host (usually
+   `localhost`), database name, user and password. The tables are created by the API itself on the
+   first request that needs them.
+5. **FTP user.** KAS, Tools, FTP: create an FTP user limited to the folder `brush.ingsparks.de/`.
+   The deploy then cannot touch anything else in the account. The workflow uses explicit FTPS on
+   port 21 (all-inkl has no SFTP). Use a long random password just for this user.
+6. **GitHub secrets.** Run `scripts/setup-deploy-secrets.sh` on your machine (needs the `gh` CLI
+   logged in to the repository). It asks for the FTP and database values (passwords are hidden) and
+   for the invite word (hidden; empty makes one up like `abcd-efgh-jkmn`), and writes the secrets
+   to the GitHub environment `production` with `gh secret set`. The invite word is stored as its
+   SHA-256 only. Nothing is written to disk.
+7. **Switch the deploy on.** This is the last step. Until it is done, a push to `main` runs
+   nothing. Set the repository variable (Settings, Secrets and variables, Actions, Variables), or:
 
-Result on the server (all created by the deploy):
+   ```sh
+   gh variable set DEPLOY_ENABLED --body true
+   ```
 
-```
-brush/                      FTP root of the deploy user
-  config/config.php         DB credentials, key hashes, commit (not public)
-  api/src/, api/migrations/ PHP code and SQL files (not public)
-  logs/api.log              request log, written by the API (not public)
-  public/                   document root of brush.ingsparks.de
-    .htaccess, index.html, assets/, api/index.php
-```
+   The next push to `main`, or Actions, Deploy, "Run workflow", deploys. To stop deploying, delete
+   the variable or set it to anything but `true`.
 
 ### GitHub secrets (environment `production`)
 
-| Secret                                         | What it is                                                      |
-| ---------------------------------------------- | --------------------------------------------------------------- |
-| `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`   | FTPS access of the FTP user from step 3                         |
-| `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database from step 2                                            |
-| `FAMILY_KEY`                                   | The key behind the family link. Random, at least 32 characters. |
-| `DEPLOY_KEY`                                   | Protects `POST /api/migrate`. Random, at least 32 characters.   |
-| `MCP_KEY`                                      | Protects `POST /api/mcp`. Random, at least 32 characters.       |
+The script sets exactly these eight:
 
-Generate each key with `openssl rand -hex 32`. Optional repository variable `MCP_ALLOW_WRITE=1`
-turns the MCP write tools on.
+| Secret                                         | What it is                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`   | FTPS access of the FTP user from step 5                             |
+| `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Database from step 4                                                |
+| `INVITE_SHA256`                                | SHA-256 (64 hex characters) of the invite word, not the word itself |
+
+By hand, the digest is `printf '%s' '<invite word>' | shasum -a 256 | cut -d' ' -f1` (no trailing
+newline). The word is compared exactly as sent, so case matters.
+
+The salt for the IP hashes of failed invite attempts is derived from `DB_PASSWORD` when the config
+is generated, so it needs no secret of its own.
+
+### Result on the server
+
+```
+brush.ingsparks.de/               FTP root of the deploy user
+  config/config.php               DB credentials, invite word digest, commit (not public)
+  api/src/, api/migrations/       PHP code and SQL files (not public)
+  logs/api.log                    request log written by the API; logs/.htaccess denies all (not public)
+  public/                         document root of https://brush.ingsparks.de
+    .htaccess, index.html, assets/, api/index.php
+```
 
 ## Deploy
 
-`.github/workflows/deploy.yml` runs on every push to `main` and on "Run workflow":
+`.github/workflows/deploy.yml` runs on every push to `main` and on "Run workflow", but only when the
+repository variable `DEPLOY_ENABLED` is `true`. It does not run any tests: they run on your machine
+in the Husky pre-push hook. One deploy runs at a time and a running deploy is never cancelled.
 
-1. `bun run check-ci`, `php -l` on all PHP files, the API tests against PHP and MariaDB in Docker.
-2. `bun run build`.
-3. Assemble the upload folder: build into `public/`, `deploy/.htaccess`, `api/index.php`, PHP code
-   and migrations next to `public/`, and `config/config.php` generated from the secrets by
-   `deploy/make-config.php` (key hashes only).
-4. Upload by FTPS in two passes (incremental, never "clean slate"): first everything except
-   `index.html`, then `index.html`, so visitors switch to the new build only after its files are in
-   place.
-5. `POST /api/migrate`.
-6. `deploy/check.sh`: health shows the new commit, `/` is revalidated, assets are cached for a year,
-   a missing asset is 404, an unknown path returns the app, `/api/state` without key is 401, the
-   family key works, dotfiles are not served, http redirects to https. The result is on the run page.
+1. `bun run build`.
+2. Assemble `deploy-out/`: the build into `public/`, `deploy/.htaccess`, `api/index.php` as
+   `public/api/index.php`, the PHP code and migrations next to `public/`, and `config/config.php`
+   generated from the secrets by `deploy/make-config.php` (it fails if a secret is missing or
+   `INVITE_SHA256` is not 64 hex characters).
+3. Upload by FTPS in two passes (incremental, never a clean slate): first everything except
+   `index.html`, then `index.html`, so visitors switch to the new build only after its files and
+   the new API code are in place.
+4. `deploy/check.sh https://brush.ingsparks.de <commit>`: `/api/health` shows the new commit; a wrong
+   invite word on `POST /api/families` is `403` (this uses the database, so a broken migration
+   fails here; it counts as one failed attempt for the runner's IP address and expires after an
+   hour); `/` is HTML and revalidated; an asset is cached for a year; a missing asset is `404`; an
+   unknown path returns the app; `/api/state` without a key and with a wrong key and
+   `/api/family/key` without a key are `401`; dotfiles are not served; the security headers arrive;
+   http redirects to https. Nothing is created on the site. The result is on the run page.
 
 If an upload was interrupted, the health check shows the old commit; run the workflow again.
 
@@ -134,17 +196,28 @@ bun run api-test    # tests against that stack
 bun run api-down    # stop (data stays in Docker volumes; add -v to the compose command to wipe)
 ```
 
-`bun run dev` proxies `/api` to port 8088. The stack uses throwaway keys from
-`api/tests/config.php`: family key `dev-family-key`, deploy key `dev-deploy-key`, MCP key
-`dev-mcp-key`. Migrations run when the container starts. The server code is mounted from `api/`,
-so PHP changes apply on the next request. `deploy/check.sh http://localhost:8088 dev` runs the
-deploy checks against it.
+`bun run dev` proxies `/api` to port 8088. The stack uses the throwaway invite word `dev-invite`
+from `api/tests/config.php`; create a family with it, for example:
 
-The tests reset the state and the throttle counters themselves (through `docker compose exec`), so
-they can run repeatedly. They leave the stored state in whatever shape the last test wrote.
+```sh
+curl -s -X POST localhost:8088/api/families -H 'Content-Type: application/json' -d '{"invite":"dev-invite"}'
+```
+
+The server code is mounted from `api/`, so PHP changes apply on the next request. The tables are
+created by the first request that needs the database. `deploy/check.sh http://localhost:8088 dev`
+runs the deploy checks against the stack.
+
+If port 8088 is taken, start the stack and run the tests with `BRUSH_API_PORT=8089` set (the same
+value for both).
+
+The tests empty the tables and the throttle counters themselves (through `docker compose exec`), so
+they can run repeatedly. One test stops the database container for a moment and starts it again.
 
 ## Database changes
 
 Add a new file `api/migrations/NNNN_name.sql` (next number, plain SQL, statements end with `;` at the
-end of a line, `--` comment lines are allowed). The deploy applies it once and records it in
-`schema_migrations`. Do not edit migrations that have been deployed.
+end of a line, `--` comment lines are allowed). Write it so that running it twice does no harm
+(`CREATE TABLE IF NOT EXISTS`, and so on), because MariaDB does not roll back table changes. The API
+applies it once, before the first request that needs the database after the deploy, and records it in
+`schema_migrations`; requests that arrive at the same moment wait for each other. Do not edit
+migrations that have been deployed.

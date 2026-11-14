@@ -65,3 +65,43 @@ export async function pushRemoteState(
   if (!body.success) return { kind: 'offline' }
   return { kind: 'ok', value: { version: body.data.version } }
 }
+
+export type CreateFamilyResult =
+  | { kind: 'ok'; key: string }
+  | { kind: 'invalid_invite' }
+  | { kind: 'too_many' }
+  | { kind: 'full' }
+  | { kind: 'offline' }
+
+const keyResponse = z.object({ key: z.string().min(16) })
+
+/** Creates a new family on the server. Needs the invite word the app's owner hands out. */
+export async function createFamily(invite: string): Promise<CreateFamilyResult> {
+  const res = await request('/api/families', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invite }),
+  })
+  if (!res) return { kind: 'offline' }
+  if (res.status === 403) return { kind: 'invalid_invite' }
+  if (res.status === 429) return { kind: 'too_many' }
+  if (res.status === 503) return { kind: 'full' }
+  if (!res.ok) return { kind: 'offline' }
+  const body = keyResponse.safeParse(await res.json().catch(() => null))
+  return body.success ? { kind: 'ok', key: body.data.key } : { kind: 'offline' }
+}
+
+/** Replaces the family key; the old link stops working at once. */
+export async function renewFamilyKey(
+  key: string,
+): Promise<{ kind: 'ok'; key: string } | { kind: 'unauthorized' } | { kind: 'offline' }> {
+  const res = await request('/api/family/key', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}` },
+  })
+  if (!res) return { kind: 'offline' }
+  if (res.status === 401) return { kind: 'unauthorized' }
+  if (!res.ok) return { kind: 'offline' }
+  const body = keyResponse.safeParse(await res.json().catch(() => null))
+  return body.success ? { kind: 'ok', key: body.data.key } : { kind: 'offline' }
+}

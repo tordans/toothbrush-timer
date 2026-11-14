@@ -1,7 +1,13 @@
 name: Deploy
 
-# Builds the app, uploads app and API to the all-inkl webspace via FTPS, migrates the database
-# and checks the live site. One workflow for everything; see docs/central-storage.md.
+# Builds the app and the API, uploads both to the all-inkl webspace via FTPS and checks that the new
+# commit is live. The API applies database migrations itself. There are no tests here: they run
+# locally before each push (Husky pre-push hook). See docs/central-storage.md for the one-time setup
+# and the list of secrets (GitHub environment "production").
+#
+# The job only runs when the repository variable DEPLOY_ENABLED is "true". Set it as the very last
+# step of the setup (Settings > Secrets and variables > Actions > Variables); until then a push
+# to main does nothing.
 
 on:
   push:
@@ -11,8 +17,9 @@ on:
 permissions:
   contents: read
 
+# One deploy at a time; a running deploy is never cancelled half way (a half-uploaded state is bad).
 concurrency:
-  group: deploy
+  group: deploy-production
   cancel-in-progress: false
 
 env:
@@ -20,124 +27,88 @@ env:
 
 jobs:
   deploy:
-    name: Check, build, upload, verify
+    name: Deploy
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment:
       name: production
       url: https://brush.ingsparks.de
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
       - run: bun install --frozen-lockfile
 
-      - run: bun run check-ci
+      - name: Build the app
+        run: bun run build
 
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pdo_mysql
-          tools: none
-
-      - name: Lint PHP
-        run: find api deploy -name '*.php' -print0 | xargs -0 -n1 php -l
-
-      - name: API tests (PHP + MariaDB in Docker)
-        run: |
-          bun run api-up
-          bun run api-test
-          bun run api-down
-
-      - run: bun run build
-
-      - name: Assemble upload folder
+      - name: Assemble the upload folders
         env:
+          COMMIT: ${{ github.sha }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          FAMILY_KEY: ${{ secrets.FAMILY_KEY }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          MCP_KEY: ${{ secrets.MCP_KEY }}
-          # Repository variable (not a secret). Set to 1 to let the MCP endpoint write.
-          MCP_ALLOW_WRITE: ${{ vars.MCP_ALLOW_WRITE }}
-          COMMIT: ${{ github.sha }}
+          INVITE_SHA256: ${{ secrets.INVITE_SHA256 }}
         run: |
           set -euo pipefail
+          test -f dist/index.html || { echo "dist/index.html is missing"; exit 1; }
           rm -rf deploy-out
-          mkdir -p deploy-out/site/public/api deploy-out/site/api deploy-out/index/public
+          mkdir -p deploy-out/site/api deploy-out/site/config deploy-out/site/logs deploy-out/site/public/api deploy-out/index/public
 
-          # Document root: the Vite build, the web server rules, the API entry
+          # public/ = document root: the Vite build, the web server rules and the API entry
           cp -R dist/. deploy-out/site/public/
           cp deploy/.htaccess deploy-out/site/public/.htaccess
           cp api/index.php deploy-out/site/public/api/index.php
 
-          # PHP code and migrations next to public/ (not reachable from the web)
-          cp -R api/src deploy-out/site/api/src
-          cp -R api/migrations deploy-out/site/api/migrations
+          # api/ = PHP code and migrations outside the document root (no vendor/: no dependencies)
+          cp -R api/src api/migrations deploy-out/site/api/
 
-          # Config outside the document root: DB credentials, key hashes, commit
+          # config/ = DB credentials, invite word digest, commit. Generated from the secrets;
+          # outside the document root.
           php deploy/make-config.php deploy-out/site/config/config.php
+          php -l deploy-out/site/config/config.php > /dev/null
 
-          # index.html goes up last (second pass), so visitors switch to the new build only
-          # after its assets and the new API code are in place.
+          # logs/ exists so the API can write its log; never served
+          printf 'Require all denied\n' > deploy-out/site/logs/.htaccess
+
+          # index.html goes up last (second pass), so visitors only switch to the new build
+          # after its hashed files and the new API code are in place
           mv deploy-out/site/public/index.html deploy-out/index/public/index.html
 
-          find deploy-out -type f | sort
+          find deploy-out -type f ! -path '*/config/*' | sort
 
-      - name: Upload, pass 1 (everything except index.html)
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+      # Pass 1: everything except index.html. Incremental sync, never a clean slate.
+      - name: Upload API and app files (FTPS)
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
-          local-dir: deploy-out/site/
+          security: strict
+          local-dir: ./deploy-out/site/
           server-dir: ./
           state-name: .ftp-deploy-sync-state.json
 
-      - name: Upload, pass 2 (index.html)
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+      # Pass 2: index.html only, which switches visitors to the new build.
+      - name: Upload index.html (FTPS)
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
-          local-dir: deploy-out/index/
+          security: strict
+          local-dir: ./deploy-out/index/
           server-dir: ./
           state-name: .ftp-deploy-sync-state-index.json
 
-      - name: Migrate database
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3 4 5 6; do
-            if curl -sS --fail-with-body --max-time 30 -X POST \
-              -H "Authorization: Bearer $DEPLOY_KEY" \
-              "$SITE_URL/api/migrate" | tee migrate.json; then
-              echo
-              {
-                echo "### Migration"
-                echo
-                echo '```json'
-                cat migrate.json
-                echo
-                echo '```'
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo "Attempt $attempt failed, retrying in 10 s"
-            sleep 10
-          done
-          echo "Migration failed" >&2
-          exit 1
-
       - name: Check the live site
         env:
-          FAMILY_KEY: ${{ secrets.FAMILY_KEY }}
           COMMIT: ${{ github.sha }}
         run: SUMMARY_FILE="$GITHUB_STEP_SUMMARY" deploy/check.sh "$SITE_URL" "$COMMIT"

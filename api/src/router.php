@@ -29,21 +29,19 @@ function brush_handle_request(): void
 
     switch ($route) {
         case '/health':
+            // No database access here: health must answer even when the database is down.
             allow_methods(['GET']);
-            handle_health();
+            respond(200, ['ok' => true, 'commit' => (string) (brush_config()['commit'] ?? 'unknown')]);
+        case '/families':
+            allow_methods(['POST']);
+            handle_families_create();
         case '/state':
             allow_methods(['GET', 'PUT']);
-            require_key('family_key_hash');
-            $method === 'GET' ? handle_state_get() : handle_state_put();
-            break;
-        case '/migrate':
+            $family = require_family();
+            $method === 'GET' ? handle_state_get($family) : handle_state_put($family);
+        case '/family/key':
             allow_methods(['POST']);
-            require_key('deploy_key_hash');
-            respond(200, ['applied' => run_migrations(db())]);
-        case '/mcp':
-            allow_methods(['POST']);
-            require_key('mcp_key_hash');
-            handle_mcp();
+            handle_family_key_renew(require_family());
         default:
             respond_error(404, 'not_found');
     }
@@ -56,24 +54,13 @@ function allow_methods(array $methods): void
     }
 }
 
-function handle_health(): never
+function handle_state_get(array $family): never
 {
-    $commit = (string) (brush_config()['commit'] ?? 'unknown');
-    try {
-        db()->query('SELECT 1');
-        respond(200, ['ok' => true, 'commit' => $commit, 'db' => true]);
-    } catch (PDOException $e) {
-        log_line('ERROR health: database not reachable (' . $e->getCode() . ')');
-        respond(503, ['ok' => false, 'commit' => $commit, 'db' => false]);
-    }
+    $state = state_read(db(), $family['id']) ?? respond_error(401, 'unauthorized');
+    respond_json(200, state_json($state));
 }
 
-function handle_state_get(): never
-{
-    respond_json(200, state_json(state_read(db())));
-}
-
-function handle_state_put(): never
+function handle_state_put(array $family): never
 {
     $ifMatchHeader = request_header('If-Match');
     if ($ifMatchHeader === null) {
@@ -85,7 +72,7 @@ function handle_state_put(): never
     }
     $dataJson = state_data_from_body(read_body(BRUSH_MAX_DATA_BYTES + 4096));
 
-    $result = state_write(db(), $ifMatch, $dataJson);
+    $result = state_write(db(), $family['id'], $ifMatch, $dataJson) ?? respond_error(401, 'unauthorized');
     if (!$result['ok']) {
         respond_json(409, state_json($result['state'], ['error' => 'conflict']));
     }

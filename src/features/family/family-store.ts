@@ -148,6 +148,7 @@ const useFamilyStore = create<FamilyStore>()(
       }
     },
     {
+      // Storage key from the first version; kept so existing phones keep their data.
       name: 'brushing-sparks',
       version: 1,
       storage: createJSONStorage(() => localStorage),

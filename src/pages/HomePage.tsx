@@ -203,6 +203,9 @@ function FirstKid() {
           }}
           className="flex flex-col gap-4"
         >
+          <p className="text-sm font-bold text-moss-600">
+            brush.ingsparks.de – Zahnputz-Timer für Kinder
+          </p>
           <h1 className="text-2xl font-extrabold">Wer putzt hier die Zähne?</h1>
           <label className="flex flex-col gap-1 font-bold">
             Name

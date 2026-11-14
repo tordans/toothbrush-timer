@@ -1,8 +1,8 @@
 <?php
 // Writes config/config.php from environment variables. Used by the deploy workflow.
 // Usage: php deploy/make-config.php <output-file>
-// Env: DB_HOST DB_NAME DB_USER DB_PASSWORD FAMILY_KEY DEPLOY_KEY MCP_KEY COMMIT [MCP_ALLOW_WRITE=1]
-// Only SHA-256 hashes of the keys are written, never the keys themselves.
+// Env: DB_HOST DB_NAME DB_USER DB_PASSWORD INVITE_SHA256 COMMIT
+// The invite word is only stored as its SHA-256; keys of families are not part of the config.
 declare(strict_types=1);
 
 $out = $argv[1] ?? null;
@@ -20,11 +20,10 @@ $need = static function (string $name): string {
     return $value;
 };
 
-foreach (['FAMILY_KEY', 'DEPLOY_KEY', 'MCP_KEY'] as $name) {
-    if (strlen($need($name)) < 32) {
-        fwrite(STDERR, "$name must be at least 32 characters\n");
-        exit(1);
-    }
+$invite = strtolower($need('INVITE_SHA256'));
+if (!preg_match('/^[0-9a-f]{64}$/', $invite)) {
+    fwrite(STDERR, "INVITE_SHA256 must be a sha256 hex digest (64 characters)\n");
+    exit(1);
 }
 
 $config = [
@@ -34,10 +33,10 @@ $config = [
         'user' => $need('DB_USER'),
         'password' => $need('DB_PASSWORD'),
     ],
-    'family_key_hash' => hash('sha256', $need('FAMILY_KEY')),
-    'deploy_key_hash' => hash('sha256', $need('DEPLOY_KEY')),
-    'mcp_key_hash' => hash('sha256', $need('MCP_KEY')),
-    'mcp_allow_write' => getenv('MCP_ALLOW_WRITE') === '1',
+    'invite_sha256' => $invite,
+    // Secret for the daily salt of the IP hashes (failed invite attempts). Derived from the
+    // database password, so it needs no secret of its own; it only has to stay the same between deploys.
+    'ip_salt_secret' => hash_hmac('sha256', 'brush ip salt', $need('DB_PASSWORD')),
     'commit' => $need('COMMIT'),
 ];
 

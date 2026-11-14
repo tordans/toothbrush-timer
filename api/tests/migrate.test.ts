@@ -1,46 +1,84 @@
-import { beforeAll, describe, expect, test } from 'bun:test'
-import { api, clearThrottle, DEPLOY_KEY, FAMILY_KEY, resetState, sql } from './helpers'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { api, clearThrottle, createFamily, createFamilyRequest, resetAll, sql } from './helpers'
 
-beforeAll(() => {
+// The API creates its tables itself, on the first request that needs the database.
+const dropTables = () => sql('DROP TABLE IF EXISTS families, invite_attempts, schema_migrations')
+const tables = () =>
+  sql(
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'brush' ORDER BY table_name",
+  )
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+
+beforeAll(resetAll)
+afterAll(async () => {
+  await resetAll()
   clearThrottle()
-  resetState()
 })
 
-describe('migrate', () => {
-  test('needs the deploy key', async () => {
-    expect((await api('/api/migrate', { method: 'POST', key: null })).status).toBe(401)
-    expect((await api('/api/migrate', { method: 'POST', key: FAMILY_KEY })).status).toBe(401)
+describe('the API migrates itself', () => {
+  test('a fresh database: the first request that needs it creates everything', async () => {
+    dropTables()
+    expect(tables()).toEqual([])
+
+    // A wrong invite word touches the database (and counts one failed attempt).
+    const res = await createFamilyRequest('wrong')
+    expect(res.status).toBe(403)
+    expect(res.json).toEqual({ error: 'invalid_invite' })
+
+    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
+    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init')
   })
 
-  test('GET is 405', async () => {
-    expect((await api('/api/migrate', { key: DEPLOY_KEY })).status).toBe(405)
+  test('works from the first request on: create a family on a fresh database', async () => {
+    dropTables()
+    const key = await createFamily()
+    const read = await api('/api/state', { key })
+    expect(read.json).toEqual({ data: null, version: 0, updated_at: null })
   })
 
-  test('is idempotent: nothing pending after the container start', async () => {
-    const first = await api('/api/migrate', { method: 'POST', key: DEPLOY_KEY })
-    expect(first.status).toBe(200)
-    expect(first.json).toEqual({ applied: [] })
-    const second = await api('/api/migrate', { method: 'POST', key: DEPLOY_KEY })
-    expect(second.json).toEqual({ applied: [] })
+  test('a state request with a key also migrates (and answers 401)', async () => {
+    dropTables()
+    const res = await api('/api/state', { key: 'unknown-key' })
+    expect(res.status).toBe(401)
+    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
+    clearThrottle()
   })
 
-  test('applies a migration whose record is missing, without losing data', async () => {
+  test('requests that arrive together on a fresh database all succeed', async () => {
+    dropTables()
+    const results = await Promise.all(
+      Array.from({ length: 10 }, (_, i) => createFamilyRequest(`wrong-${i}`)),
+    )
+    expect(results.map((r) => r.status)).toEqual(Array(10).fill(403))
+    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
+    expect(sql('SELECT COUNT(*) FROM schema_migrations').trim()).toBe('1')
+  })
+
+  test('nothing pending: a request changes nothing', async () => {
+    await resetAll()
+    const before = sql('SELECT name, applied_at FROM schema_migrations')
+    await createFamilyRequest('wrong')
+    expect(sql('SELECT name, applied_at FROM schema_migrations')).toBe(before)
+  })
+
+  test('a migration whose record is missing is applied again without losing data', async () => {
+    await resetAll()
+    const key = await createFamily()
     const saved = await api('/api/state', {
       method: 'PUT',
+      key,
       headers: { 'If-Match': '"0"' },
       body: { data: { keep: 'me' } },
     })
     expect(saved.status).toBe(200)
 
     sql("DELETE FROM schema_migrations WHERE name = '0001_init'")
-    const res = await api('/api/migrate', { method: 'POST', key: DEPLOY_KEY })
-    expect(res.json).toEqual({ applied: ['0001_init'] })
-
-    const again = await api('/api/migrate', { method: 'POST', key: DEPLOY_KEY })
-    expect(again.json).toEqual({ applied: [] })
-
-    const read = await api('/api/state')
+    const read = await api('/api/state', { key })
+    expect(read.status).toBe(200)
     expect(read.json.data).toEqual({ keep: 'me' })
     expect(read.json.version).toBe(1)
+    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init')
   })
 })

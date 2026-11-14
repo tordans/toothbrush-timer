@@ -1,28 +1,31 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
-import { api, clearThrottle, ISO_MS, resetState } from './helpers'
+import { api, createFamily, ISO_MS, resetAll } from './helpers'
+
+let key = ''
 
 const put = (version: number | string, data: unknown) =>
   api('/api/state', {
     method: 'PUT',
+    key,
     headers: { 'If-Match': typeof version === 'number' ? `"${version}"` : version },
     body: { data },
   })
 
-beforeAll(() => {
-  clearThrottle()
-  resetState()
+beforeAll(async () => {
+  await resetAll()
+  key = await createFamily()
 })
 
 describe('state', () => {
   test('empty before the first save', async () => {
-    const res = await api('/api/state')
+    const res = await api('/api/state', { key })
     expect(res.status).toBe(200)
     expect(res.json).toEqual({ data: null, version: 0, updated_at: null })
     expect(res.headers.get('cache-control')).toBe('no-store')
   })
 
   test('PUT without If-Match is 428', async () => {
-    const res = await api('/api/state', { method: 'PUT', body: { data: {} } })
+    const res = await api('/api/state', { method: 'PUT', key, body: { data: {} } })
     expect(res.status).toBe(428)
     expect(res.json.error).toBe('precondition_required')
   })
@@ -45,7 +48,7 @@ describe('state', () => {
     expect(saved.json.version).toBe(1)
     expect(saved.json.updated_at).toMatch(ISO_MS)
 
-    const read = await api('/api/state')
+    const read = await api('/api/state', { key })
     expect(read.json.data).toEqual(data)
     expect(read.json.version).toBe(1)
     expect(read.json.updated_at).toBe(saved.json.updated_at)
@@ -71,7 +74,7 @@ describe('state', () => {
     expect(res.json.version).toBe(3)
     expect(res.json.updated_at).toMatch(ISO_MS)
     // nothing was overwritten
-    expect((await api('/api/state')).json.data).toEqual({ v: 3 })
+    expect((await api('/api/state', { key })).json.data).toEqual({ v: 3 })
   })
 
   test('a version from the future is also a conflict', async () => {
@@ -85,13 +88,19 @@ describe('state', () => {
     ['a missing data field', { other: {} }],
     ['a plain array body', [{}]],
   ])('data that is %s is 400', async (_name, body) => {
-    const res = await api('/api/state', { method: 'PUT', headers: { 'If-Match': '"3"' }, body })
+    const res = await api('/api/state', {
+      method: 'PUT',
+      key,
+      headers: { 'If-Match': '"3"' },
+      body,
+    })
     expect(res.status).toBe(400)
   })
 
   test('invalid JSON is 400', async () => {
     const res = await api('/api/state', {
       method: 'PUT',
+      key,
       headers: { 'If-Match': '"3"' },
       body: '{nope',
     })
@@ -112,18 +121,18 @@ describe('state', () => {
   })
 
   test('parallel writers: exactly one wins', async () => {
-    const current = (await api('/api/state')).json.version as number
+    const current = (await api('/api/state', { key })).json.version as number
     const results = await Promise.all(
       Array.from({ length: 12 }, (_, i) => put(current, { writer: i })),
     )
     const statuses = results.map((r) => r.status).toSorted((a, b) => a - b)
     expect(statuses.filter((s) => s === 200)).toHaveLength(1)
     expect(statuses.filter((s) => s === 409)).toHaveLength(11)
-    expect((await api('/api/state')).json.version).toBe(current + 1)
+    expect((await api('/api/state', { key })).json.version).toBe(current + 1)
   })
 
   test('PATCH is 405', async () => {
-    const res = await api('/api/state', { method: 'PATCH' })
+    const res = await api('/api/state', { method: 'PATCH', key })
     expect(res.status).toBe(405)
   })
 })

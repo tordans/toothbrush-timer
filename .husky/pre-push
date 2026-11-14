@@ -1,0 +1,2 @@
+# Dependabot PRs and pushes are checked here, not in CI (same as the sibling apps).
+bun run check-pre-push

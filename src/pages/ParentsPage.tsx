@@ -15,6 +15,7 @@ import {
 import { activeKids, brushingsFor } from '@/features/family/queries'
 import { SLOTS, type Animal as AnimalId, type Kid } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
+import { createFamily, renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
 import { useNow } from '@/hooks/use-now'
 import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
@@ -301,6 +302,27 @@ function DevicesSection() {
 
   const link = familyKey ? `${window.location.origin}/#key=${encodeURIComponent(familyKey)}` : ''
 
+  const renew = async () => {
+    if (!familyKey) return
+    if (
+      !window.confirm(
+        'Neuen Familien-Link erzeugen? Der alte Link geht dann sofort nicht mehr. Andere Handys müssen den neuen Link öffnen.',
+      )
+    )
+      return
+    const result = await renewFamilyKey(familyKey)
+    if (result.kind === 'ok') {
+      connect(result.key)
+      setShowLink(true)
+    } else {
+      window.alert(
+        result.kind === 'unauthorized'
+          ? 'Der aktuelle Link gilt schon nicht mehr.'
+          : 'Keine Verbindung zum Server. Bitte später noch einmal versuchen.',
+      )
+    }
+  }
+
   const submit = () => {
     const value = input.trim()
     const match = /key=([^&\s]+)/.exec(value)
@@ -343,6 +365,9 @@ function DevicesSection() {
             <Button variant="secondary" onClick={() => setShowLink((v) => !v)}>
               {showLink ? 'Link verbergen' : 'Link für ein weiteres Gerät'}
             </Button>
+            <Button variant="secondary" onClick={() => void renew()}>
+              Neuen Link erzeugen
+            </Button>
             <Button
               variant="danger"
               className="ml-auto"
@@ -369,28 +394,32 @@ function DevicesSection() {
           )}
         </>
       ) : (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            submit()
-          }}
-        >
-          <p className="text-sm text-bark-600">
-            Damit beide Handys dieselbe Woche zeigen: den Familien-Link öffnen oder hier einfügen.
-            Was auf diesem Gerät schon eingetragen ist, bleibt erhalten und wird übernommen.
-          </p>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="https://brush.ingsparks.de/#key=…"
-            aria-label="Familien-Link"
-            className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 font-mono text-sm"
-          />
-          <Button type="submit" disabled={input.trim().length < 16}>
-            Verbinden
-          </Button>
-        </form>
+        <>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              submit()
+            }}
+          >
+            <h3 className="font-extrabold">Familien-Link schon vorhanden</h3>
+            <p className="text-sm text-bark-600">
+              Den Link vom anderen Handy hier öffnen oder einfügen. Was auf diesem Gerät schon
+              eingetragen ist, bleibt erhalten und wird übernommen.
+            </p>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="https://brush.ingsparks.de/#key=…"
+              aria-label="Familien-Link"
+              className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 font-mono text-sm"
+            />
+            <Button type="submit" disabled={input.trim().length < 16}>
+              Verbinden
+            </Button>
+          </form>
+          <CreateFamilyForm onCreated={connect} />
+        </>
       )}
     </Section>
   )
@@ -398,7 +427,7 @@ function DevicesSection() {
 
 function AboutSection() {
   return (
-    <Section title="Über Brushing Sparks">
+    <Section title="Über brush.ingsparks.de">
       <p>
         Ein ruhiger Zahnputz-Timer: zwei Minuten, vier Ecken, morgens und abends. Es gibt keine
         Punkte, keine Sammelbilder und keine Serien, die reißen können. Jedes Putzen öffnet eine
@@ -409,5 +438,53 @@ function AboutSection() {
         Deutschland. Keine Werbung, kein Tracking.
       </p>
     </Section>
+  )
+}
+
+const CREATE_ERRORS = {
+  invalid_invite: 'Das Einladungswort stimmt nicht.',
+  too_many: 'Zu viele Versuche. Bitte in einer Stunde noch einmal.',
+  full: 'Auf dem Server ist gerade kein Platz für neue Familien.',
+  offline: 'Keine Verbindung zum Server. Bitte später noch einmal versuchen.',
+} as const
+
+/** A new family on the server. Only with the invite word, which is handed out in person. */
+function CreateFamilyForm({ onCreated }: { onCreated: (key: string) => void }) {
+  const [invite, setInvite] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <form
+      className="flex flex-col gap-2 border-t-2 border-bark-100 pt-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        setBusy(true)
+        setError(null)
+        void createFamily(invite.trim()).then((result) => {
+          setBusy(false)
+          if (result.kind === 'ok') onCreated(result.key)
+          else setError(CREATE_ERRORS[result.kind])
+        })
+      }}
+    >
+      <h3 className="font-extrabold">Neue Familie anlegen</h3>
+      <p className="text-sm text-bark-600">
+        Damit mehrere Handys dieselbe Woche zeigen, legt ihr eure Familie auf dem Server an. Dafür
+        braucht ihr das Einladungswort. Danach gibt es einen Familien-Link für die anderen Handys.
+      </p>
+      <input
+        value={invite}
+        onChange={(e) => setInvite(e.target.value)}
+        placeholder="Einladungswort"
+        aria-label="Einladungswort"
+        autoComplete="off"
+        className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 text-base"
+      />
+      {error && <p className="text-sm font-bold text-[#8a2f25]">{error}</p>}
+      <Button type="submit" disabled={busy || invite.trim().length === 0}>
+        {busy ? 'Lege an …' : 'Familie anlegen'}
+      </Button>
+    </form>
   )
 }
