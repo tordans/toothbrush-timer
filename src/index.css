@@ -31,3 +31,16 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Clouds drift from the left edge to beyond the right edge (distance in --drift). */
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--drift));
+  }
+}
+.drift {
+  animation: drift 120s linear infinite;
+}

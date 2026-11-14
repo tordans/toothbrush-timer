@@ -1,4 +1,4 @@
-import { addDays, format, isValid, parseISO, startOfWeek } from 'date-fns'
+import { addDays, format, isValid, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
 import type { Slot } from '@/features/family/schema'
 
@@ -12,10 +12,10 @@ export function slotForTime(date: Date): Slot {
   return date.getHours() < 14 ? 'morning' : 'evening'
 }
 
-/** Monday-based week containing `date`, shifted by `offset` weeks. */
-export function weekDays(date: Date, offset = 0): Date[] {
-  const monday = addDays(startOfWeek(date, { weekStartsOn: 1 }), offset * 7)
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+/** Seven days with `date` in the middle (three before, three after), shifted by `offset` weeks. */
+export function daysAround(date: Date, offset = 0): Date[] {
+  const first = addDays(date, offset * 7 - 3)
+  return Array.from({ length: 7 }, (_, i) => addDays(first, i))
 }
 
 export function weekdayShort(date: Date): string {

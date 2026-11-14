@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { clockLabel, SECTIONS, TIMELINE_SECONDS, timerPosition } from '@/features/timer/sections'
-import { slotForTime, weekDays } from '@/lib/dates'
+import { daysAround, slotForTime } from '@/lib/dates'
 
 describe('timerPosition', () => {
   it('starts in the first corner with two minutes left', () => {
@@ -59,11 +59,12 @@ describe('dates', () => {
     expect(slotForTime(new Date(2026, 10, 5, 14, 0))).toBe('evening')
   })
 
-  it('builds a Monday-to-Sunday week', () => {
-    const days = weekDays(new Date(2026, 10, 5))
+  it('puts today in the middle of seven days', () => {
+    const days = daysAround(new Date(2026, 10, 14))
     expect(days).toHaveLength(7)
-    expect(days[0]?.getDay()).toBe(1)
-    expect(days[6]?.getDay()).toBe(0)
-    expect(weekDays(new Date(2026, 10, 5), -1)[0]?.getDate()).toBe(26)
+    expect(days[3]?.getDate()).toBe(14)
+    expect(days[0]?.getDate()).toBe(11)
+    expect(days[6]?.getDate()).toBe(17)
+    expect(daysAround(new Date(2026, 10, 14), -1)[3]?.getDate()).toBe(7)
   })
 })

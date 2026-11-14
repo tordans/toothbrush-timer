@@ -17,14 +17,14 @@ import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor } from '@/features/forest/scenery'
 import { usePortrait } from '@/hooks/use-media'
 import { useNow } from '@/hooks/use-now'
-import { isoDay, slotForTime, weekDays, weekdayShort, weekRangeLabel } from '@/lib/dates'
+import { daysAround, isoDay, slotForTime, weekdayShort, weekRangeLabel } from '@/lib/dates'
 
 const route = getRouteApi('/')
 
 export function HomePage() {
   const family = useFamily()
   const activeKidId = useActiveKidId()
-  const { setActiveKid } = useFamilyActions()
+  const { setActiveKid, updateKid } = useFamilyActions()
   const now = useNow()
   const portrait = usePortrait()
   const navigate = useNavigate()
@@ -34,10 +34,11 @@ export function HomePage() {
   const kid = kids.find((k) => k.id === activeKidId) ?? kids[0]
 
   const [chosenSlot, setChosenSlot] = useState<Slot | null>(null)
+  const [pickingAnimal, setPickingAnimal] = useState(false)
   const slot = chosenSlot ?? slotForTime(now)
 
   const today = isoDay(now)
-  const days = weekDays(now, week)
+  const days = daysAround(now, week)
   const dayStatus: DayStatus[] = days.map((d) => {
     const key = isoDay(d)
     return {
@@ -48,6 +49,7 @@ export function HomePage() {
       evening: kid ? isBrushed(family, kid.id, key, 'evening') : false,
       isToday: key === today,
       isFuture: key > today,
+      isPast: key < today,
     }
   })
   const brushedNow = kid ? isBrushed(family, kid.id, today, slot) : false
@@ -63,6 +65,7 @@ export function HomePage() {
           light={dayLightForSlot(slot, now)}
           season={seasonFor(days[3] ?? now)}
           portrait={portrait}
+          onAnimalTap={kid ? () => setPickingAnimal(true) : undefined}
         />
 
         {/* top bar */}
@@ -106,7 +109,7 @@ export function HomePage() {
                 <ChevronLeft className="h-6 w-6" />
               </button>
               <span className="min-w-[5.5rem] text-center text-xs sm:min-w-[7.5rem] sm:text-sm font-bold">
-                {week === 0 ? 'Diese Woche' : weekRangeLabel(days)}
+                {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
               </span>
               <button
                 type="button"
@@ -153,6 +156,18 @@ export function HomePage() {
         </div>
       ) : (
         <FirstKid />
+      )}
+
+      {kid && pickingAnimal && (
+        <AnimalDialog
+          name={kid.name}
+          animal={kid.animal}
+          onPick={(animal) => {
+            updateKid(kid.id, { animal })
+            setPickingAnimal(false)
+          }}
+          onClose={() => setPickingAnimal(false)}
+        />
       )}
     </main>
   )
@@ -229,6 +244,36 @@ function FirstKid() {
             rechts gedrückt halten.
           </p>
         </form>
+      </Card>
+    </div>
+  )
+}
+
+/** The child picks the animal that brushes along (tap the animal in the forest). */
+function AnimalDialog({
+  name,
+  animal,
+  onPick,
+  onClose,
+}: {
+  name: string
+  animal: AnimalId
+  onPick: (animal: AnimalId) => void
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="absolute inset-0 flex overflow-y-auto bg-moss-950/40 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <Card className="m-auto flex w-full max-w-lg animate-fadein flex-col gap-4">
+        <h2 className="text-2xl font-extrabold">Wer putzt mit dir, {name}?</h2>
+        <AnimalPicker value={animal} onChange={onPick} />
+        <Button variant="secondary" onClick={onClose}>
+          So lassen
+        </Button>
       </Card>
     </div>
   )

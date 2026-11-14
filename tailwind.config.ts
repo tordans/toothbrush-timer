@@ -70,6 +70,11 @@ export default {
           '20%': { opacity: '1' },
           '100%': { opacity: '0', transform: 'translateY(-160px) scale(1.1)' },
         },
+        grow: {
+          '0%': { transform: 'scale(0)' },
+          '70%': { transform: 'scale(1.08)' },
+          '100%': { transform: 'scale(1)' },
+        },
         pop: {
           '0%': { transform: 'scale(0.4)', opacity: '0' },
           '60%': { transform: 'scale(1.12)', opacity: '1' },
@@ -89,6 +94,7 @@ export default {
         wave: 'wave 0.6s ease-in-out infinite',
         rise: 'rise 2.4s ease-out infinite',
         pop: 'pop 0.7s ease-out both',
+        grow: 'grow 3s ease-out both',
         fadein: 'fadein 0.4s ease-out both',
       },
     },

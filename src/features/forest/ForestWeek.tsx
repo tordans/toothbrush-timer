@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useEffect, useId, useState, type CSSProperties } from 'react'
 import type { Animal as AnimalId } from '@/features/family/schema'
 import { Animal } from './Animal'
 import {
@@ -25,6 +25,7 @@ export type DayStatus = {
   evening: boolean
   isToday: boolean
   isFuture: boolean
+  isPast: boolean
 }
 
 type Props = {
@@ -33,6 +34,8 @@ type Props = {
   light: DayLight
   season: Season
   portrait: boolean
+  /** Tapping the child's animal (to choose another one). */
+  onAnimalTap?: () => void
 }
 
 type Pt = { x: number; y: number }
@@ -47,6 +50,8 @@ type Layout = {
   pathStart: Pt
   pathEnd: Pt
   back: { kind: 'pine' | 'round'; x: number; y: number; s: number; tone: 0 | 1 | 2 }[]
+  /** Free places where a mushroom or flower may grow while the app is open. */
+  grow: Pt[]
   front: {
     kind: 'bush' | 'mushroom' | 'rock' | 'fern' | 'grass'
     x: number
@@ -60,6 +65,18 @@ const LANDSCAPE: Layout = {
   h: 820,
   horizon: 430,
   skyTop: 250,
+  grow: [
+    { x: 258, y: 800 },
+    { x: 474, y: 520 },
+    { x: 690, y: 805 },
+    { x: 906, y: 520 },
+    { x: 1122, y: 805 },
+    { x: 1338, y: 520 },
+    { x: 1540, y: 805 },
+    { x: 40, y: 560 },
+    { x: 1580, y: 540 },
+    { x: 905, y: 805 },
+  ],
   stations: Array.from({ length: 7 }, (_, i) => ({
     x: 150 + i * 216,
     y: i % 2 === 0 ? 690 : 560,
@@ -101,6 +118,18 @@ const PORTRAIT: Layout = {
   h: 1500,
   horizon: 210,
   skyTop: 0,
+  grow: [
+    { x: 80, y: 410 },
+    { x: 830, y: 560 },
+    { x: 90, y: 690 },
+    { x: 820, y: 780 },
+    { x: 70, y: 960 },
+    { x: 830, y: 1110 },
+    { x: 90, y: 1230 },
+    { x: 800, y: 1330 },
+    { x: 840, y: 330 },
+    { x: 60, y: 1420 },
+  ],
   stations: Array.from({ length: 7 }, (_, i) => ({
     x: i % 2 === 0 ? 300 : 610,
     y: 330 + i * 178,
@@ -131,11 +160,9 @@ const PORTRAIT: Layout = {
   ],
 }
 
-/** Catmull-Rom spline through the points, as an SVG path. */
-function smoothPath(points: Pt[]): string {
-  const first = points[0]
-  if (!first) return ''
-  let d = `M${first.x} ${first.y}`
+/** Catmull-Rom spline through the points, as one cubic Bézier segment per pair of points. */
+function smoothSegments(points: Pt[]): string[] {
+  const segments: string[] = []
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[i - 1] ?? points[i]!
     const p1 = points[i]!
@@ -143,15 +170,40 @@ function smoothPath(points: Pt[]): string {
     const p3 = points[i + 2] ?? p2
     const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }
     const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 }
-    d += ` C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`
+    segments.push(`C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`)
   }
-  return d
+  return segments
 }
 
-export function ForestWeek({ days, animal, light, season, portrait }: Props) {
+/** Mushrooms and flowers that grow, one every little while, while the forest is on screen. */
+function useGrowingThings(spots: number, max = 8) {
+  const [grown, setGrown] = useState<number[]>([])
+  useEffect(() => {
+    const id = setInterval(() => {
+      setGrown((current) => {
+        if (current.length >= Math.min(max, spots)) return current
+        const free = Array.from({ length: spots }, (_, i) => i).filter((i) => !current.includes(i))
+        const next = free[Math.floor(Math.random() * free.length)]
+        return next === undefined ? current : [...current, next]
+      })
+    }, 25_000)
+    return () => clearInterval(id)
+  }, [spots, max])
+  return grown
+}
+
+export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap }: Props) {
   const id = useId().replace(/:/g, '')
   const L = portrait ? PORTRAIT : LANDSCAPE
-  const path = smoothPath([L.pathStart, ...L.stations, L.pathEnd])
+  const segments = smoothSegments([L.pathStart, ...L.stations, L.pathEnd])
+  const path = `M${L.pathStart.x} ${L.pathStart.y} ${segments.join(' ')}`
+  // The part of the path up to today is darker: there you have already been.
+  const lastPast = days.reduce((last, d, i) => (d.isPast || d.isToday ? i : last), -1)
+  const pastPath =
+    lastPast >= 0
+      ? `M${L.pathStart.x} ${L.pathStart.y} ${segments.slice(0, lastPast + 1).join(' ')}`
+      : ''
+  const grown = useGrowingThings(L.grow.length)
   const dark = light === 'night' || light === 'evening'
   const ground = GROUND[season]
   const meadow = `M0 ${L.horizon + 30} Q${L.w * 0.5} ${L.horizon - 10} ${L.w} ${L.horizon + 30} V${L.h} H0 Z`
@@ -213,7 +265,7 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
       <path d={meadow} fill={`url(#ground-light${id})`} />
       <path d={meadow} fill={`url(#ground-dark${id})`} style={{ ...FADE, opacity: dark ? 1 : 0 }} />
 
-      {/* the path */}
+      {/* the path: light where the days are still to come, darker where they are behind */}
       <path d={path} fill="none" stroke="#c9a676" strokeWidth="64" strokeLinecap="round" />
       <path
         d={path}
@@ -223,6 +275,19 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
         strokeLinecap="round"
         strokeDasharray="2 26"
       />
+      {pastPath && (
+        <>
+          <path d={pastPath} fill="none" stroke="#8a6a46" strokeWidth="64" strokeLinecap="round" />
+          <path
+            d={pastPath}
+            fill="none"
+            stroke="#a1825a"
+            strokeWidth="44"
+            strokeLinecap="round"
+            strokeDasharray="2 26"
+          />
+        </>
+      )}
 
       {L.front.map((f, i) => {
         switch (f.kind) {
@@ -237,6 +302,20 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
           case 'grass':
             return <Grass key={i} x={f.x} y={f.y} s={f.s} />
         }
+      })}
+
+      {grown.map((spot, n) => {
+        const p = L.grow[spot]
+        if (!p) return null
+        return (
+          <g key={spot} className="animate-grow" style={GROW}>
+            {n % 2 === 0 ? (
+              <Mushroom x={p.x} y={p.y} s={1.1} />
+            ) : (
+              <MorningFlower x={p.x} y={p.y} open s={0.8} />
+            )}
+          </g>
+        )
       })}
 
       {days.map((day, i) => {
@@ -255,7 +334,15 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
           viewBox="0 0 100 100"
           overflow="visible"
         >
-          <g className="animate-bob">
+          <g
+            className="animate-bob"
+            role={onAnimalTap ? 'button' : undefined}
+            aria-label={onAnimalTap ? 'Anderes Tier aussuchen' : undefined}
+            onClick={onAnimalTap}
+            style={onAnimalTap ? { cursor: 'pointer' } : undefined}
+          >
+            {/* invisible tap area over the whole animal, so small fingers do not miss */}
+            {onAnimalTap && <rect x="5" y="5" width="90" height="95" fill="transparent" />}
             <ellipse cx="50" cy="97" rx="26" ry="5" fill="#000" opacity="0.15" />
             <Animal animal={animal} />
           </g>
@@ -267,6 +354,7 @@ export function ForestWeek({ days, animal, light, season, portrait }: Props) {
 
 function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
   const both = day.morning && day.evening
+  const missed = day.isPast && !day.morning && !day.evening
   return (
     <g opacity={day.isFuture ? 0.6 : 1}>
       {day.isToday && (
@@ -282,7 +370,13 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
           opacity="0.9"
         />
       )}
-      <ellipse cx={x} cy={y} rx="96" ry="34" fill={both ? '#c8e39a' : '#a8cc76'} />
+      <ellipse
+        cx={x}
+        cy={y}
+        rx="96"
+        ry="34"
+        fill={missed ? '#6f7a48' : both ? '#c8e39a' : '#a8cc76'}
+      />
       <MorningFlower x={x - 44} y={y + 8} open={day.morning} s={1.6} />
       <EveningLantern x={x + 22} y={y + 10} lit={day.evening} s={1.6} />
       {/* wooden sign with the weekday */}
@@ -298,11 +392,11 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
           stroke="#7a5638"
           strokeWidth="4"
         />
+        {/* alphabetic baseline: "middle" sits too low with Nunito in some browsers */}
         <text
           x="0"
-          y="1"
+          y="0.5"
           textAnchor="middle"
-          dominantBaseline="middle"
           fontSize="24"
           fontWeight="800"
           fill="#4e352a"
@@ -316,6 +410,16 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
 }
 
 const FADE = { transition: 'opacity 1.4s ease' } as const
+const GROW = { transformBox: 'fill-box', transformOrigin: '50% 100%' } as const
+
+/** Cloud drift across the whole width; a negative delay starts each cloud somewhere on its way. */
+function driftStyle(w: number, seconds: number, startAt: number) {
+  return {
+    '--drift': `${w + 400}px`,
+    animationDuration: `${seconds}s`,
+    animationDelay: `${-seconds * startAt}s`,
+  } as CSSProperties
+}
 const DAY_LIGHTS: DayLight[] = ['morning', 'day', 'evening', 'night']
 const MOVE = { transition: 'transform 1.6s ease, opacity 1.4s ease' } as const
 
@@ -370,8 +474,13 @@ function SkyDecor({
         <circle cx="14" cy="-8" r="30" fill="#1f2347" />
       </g>
       <g style={{ ...FADE, opacity: cloudOpacity }}>
-        <Cloud x={w * 0.2} y={sky(0.35)} />
-        <Cloud x={w * 0.55} y={sky(0.2)} s={0.7} />
+        {/* two clouds drift slowly across the sky */}
+        <g className="drift" style={driftStyle(w, 95, 0.3)}>
+          <Cloud x={-200} y={sky(0.35)} />
+        </g>
+        <g className="drift" style={driftStyle(w, 140, 0.75)}>
+          <Cloud x={-200} y={sky(0.2)} s={0.7} />
+        </g>
       </g>
     </g>
   )
