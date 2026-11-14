@@ -1,26 +1,30 @@
 /**
  * Sound for the brushing timer, generated with the Web Audio API (no audio files):
- * - a soft bell at each section change,
- * - three rising bell notes at the end,
- * - optional calm background music: a quiet drone plus slow pentatonic notes with an echo.
+ * - optional background music, one of three songs (see music.ts),
+ * - a short phrase at each section change, in the instrument of the chosen song,
+ * - a little bell melody at the end.
  *
  * The AudioContext must be created from a tap (browser autoplay rules).
  */
 
+import { SONGS, type MusicStyle, type Voices } from './music'
+
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext }
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
 
-// Pentatonic scale on C, two octaves (Hz). No wrong notes, no tension.
-const SCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99, 880.0]
+const MUSIC_LEVEL = 0.7
 
 class BrushingAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private musicBus: GainNode | null = null
   private echo: DelayNode | null = null
-  private drone: OscillatorNode[] = []
-  private noteTimer: ReturnType<typeof setTimeout> | undefined
   private musicOn = false
+  private style: MusicStyle = 'spieluhr'
+  private step = 0
+  private nextStepAt = 0
+  private scheduleTimer: ReturnType<typeof setTimeout> | undefined
+  private previewTimer: ReturnType<typeof setTimeout> | undefined
 
   /** Call from a tap handler. */
   unlock() {
@@ -79,15 +83,6 @@ class BrushingAudio {
     }
   }
 
-  /** Short rising jingle: this corner is done, move on to the next. */
-  switchJingle() {
-    if (!this.ctx) return
-    const t = this.ctx.currentTime + 0.02
-    this.bell(523.25, t, 0.28, 1.6)
-    this.bell(659.25, t + 0.14, 0.28, 1.6)
-    this.bell(783.99, t + 0.28, 0.32, 2.2)
-  }
-
   /** A little melody at the end. */
   finishMelody() {
     if (!this.ctx) return
@@ -103,6 +98,16 @@ class BrushingAudio {
     for (const [freq, at] of notes) this.bell(freq, t + at, 0.3, at === 1.0 ? 3.6 : 1.8)
   }
 
+  /** The song for this brushing; the corner jingle follows it even when the music is off. */
+  setStyle(style: MusicStyle) {
+    this.style = style
+  }
+
+  private voices(): Voices | null {
+    if (!this.ctx || !this.musicBus || !this.echo) return null
+    return { ctx: this.ctx, out: this.musicBus, echo: this.echo }
+  }
+
   startMusic() {
     const ctx = this.ctx
     const bus = this.musicBus
@@ -110,58 +115,82 @@ class BrushingAudio {
     this.musicOn = true
     bus.gain.cancelScheduledValues(ctx.currentTime)
     bus.gain.setValueAtTime(bus.gain.value, ctx.currentTime)
-    bus.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2)
-
-    // Quiet drone: C and G, slightly detuned for warmth.
-    this.drone = [130.81, 196.0, 131.2].map((freq) => {
-      const osc = ctx.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      const g = ctx.createGain()
-      g.gain.value = 0.035
-      osc.connect(g)
-      g.connect(bus)
-      osc.start()
-      return osc
-    })
-    this.playNote()
+    bus.gain.linearRampToValueAtTime(MUSIC_LEVEL, ctx.currentTime + 1.5)
+    // Each start (also after a pause) begins the song from the top.
+    this.step = 0
+    // Echo on the dotted eighth, so it bounces in time.
+    this.echo?.delayTime.setValueAtTime(
+      (60 / SONGS[this.style].eighthsPerMinute) * 1.5,
+      ctx.currentTime,
+    )
+    this.nextStepAt = ctx.currentTime + 0.1
+    this.schedule()
   }
 
-  private playNote() {
-    const ctx = this.ctx
-    const bus = this.musicBus
-    const echo = this.echo
-    if (!ctx || !bus || !echo || !this.musicOn) return
-    const freq = SCALE[Math.floor(Math.random() * SCALE.length)] ?? 440
-    const t = ctx.currentTime + 0.02
-    const osc = ctx.createOscillator()
-    osc.type = 'triangle'
-    osc.frequency.value = freq
-    const env = ctx.createGain()
-    env.gain.setValueAtTime(0.0001, t)
-    env.gain.linearRampToValueAtTime(0.09, t + 0.08)
-    env.gain.exponentialRampToValueAtTime(0.0001, t + 2.2)
-    osc.connect(env)
-    env.connect(bus)
-    env.connect(echo)
-    osc.start(t)
-    osc.stop(t + 2.3)
-    // Slow and uneven, like wind chimes.
-    this.noteTimer = setTimeout(() => this.playNote(), 900 + Math.random() * 1600)
+  /**
+   * Plans the notes of the next quarter second, then checks again soon. Timers in the browser
+   * are not exact, the audio clock is; so notes are placed on the audio clock ahead of time.
+   */
+  private schedule() {
+    const v = this.voices()
+    if (!v || !this.musicOn) return
+    const song = SONGS[this.style]
+    const eighth = 60 / song.eighthsPerMinute
+    while (this.nextStepAt < v.ctx.currentTime + 0.25) {
+      song.step(v, this.step, this.nextStepAt)
+      this.step++
+      this.nextStepAt += eighth
+    }
+    this.scheduleTimer = setTimeout(() => this.schedule(), 50)
+  }
+
+  /** Short phrase in the song's instrument: this corner is done, move on to the next. */
+  switchJingle() {
+    const v = this.voices()
+    if (!v) return
+    const song = SONGS[this.style]
+    const eighth = 60 / song.eighthsPerMinute
+    let t = v.ctx.currentTime + 0.02
+    if (this.musicOn) {
+      // Wait for the next full beat, so the jingle lands in time with the song.
+      const stepsToBeat = this.step % 2
+      t = Math.max(t, this.nextStepAt + stepsToBeat * eighth)
+    }
+    song.jingle(v, t, eighth)
   }
 
   stopMusic() {
     const ctx = this.ctx
     const bus = this.musicBus
-    clearTimeout(this.noteTimer)
+    clearTimeout(this.scheduleTimer)
     if (!ctx || !bus || !this.musicOn) return
     this.musicOn = false
     const t = ctx.currentTime
     bus.gain.cancelScheduledValues(t)
     bus.gain.setValueAtTime(bus.gain.value, t)
+    // Notes already planned fade out with the music.
     bus.gain.linearRampToValueAtTime(0, t + 0.8)
-    for (const osc of this.drone) osc.stop(t + 0.9)
-    this.drone = []
+  }
+
+  /** A few seconds of a song, for choosing one on the parents page. */
+  preview(style: MusicStyle) {
+    this.unlock()
+    this.stopMusic()
+    clearTimeout(this.previewTimer)
+    this.setStyle(style)
+    // Starts once the fade of a running preview has finished.
+    this.previewTimer = setTimeout(
+      () => {
+        this.startMusic()
+        this.previewTimer = setTimeout(() => this.stopMusic(), 7000)
+      },
+      this.ctx && this.musicBus && this.musicBus.gain.value > 0.01 ? 850 : 0,
+    )
+  }
+
+  stopPreview() {
+    clearTimeout(this.previewTimer)
+    this.stopMusic()
   }
 }
 

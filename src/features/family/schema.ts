@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MUSIC_STYLES } from '@/features/timer/music'
 
 export const ANIMALS = ['fox', 'hedgehog', 'owl', 'rabbit', 'squirrel', 'bear'] as const
 const animalSchema = z.enum(ANIMALS)
@@ -44,6 +45,8 @@ export type Brushing = z.infer<typeof brushingSchema>
 
 const settingsSchema = z.object({
   music: z.boolean(),
+  /** Which song plays; `mix` picks another one each time. Missing in older data: `mix`. */
+  musicStyle: z.enum([...MUSIC_STYLES, 'mix']).optional(),
   gong: z.boolean(),
   updatedAt: z.string(),
 })

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { subDays } from 'date-fns'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
 import { ChevronLeft, MoonIcon, SunIcon } from '@/components/icons'
 import { AnimalBadge, AnimalPicker, Button, Card, Toggle, ToothbrushPicker } from '@/components/ui'
@@ -17,6 +17,8 @@ import { SLOTS, type Animal as AnimalId, type Kid, type Toothbrush } from '@/fea
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
 import { renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
+import { brushingAudio } from '@/features/timer/audio'
+import { MUSIC_STYLE_LABELS, MUSIC_STYLES } from '@/features/timer/music'
 import { useNow } from '@/hooks/use-now'
 import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
 
@@ -267,16 +269,54 @@ function CalendarSection() {
   )
 }
 
+const MUSIC_OPTIONS = [
+  ...MUSIC_STYLES.map((value) => ({ value, label: MUSIC_STYLE_LABELS[value] })),
+  { value: 'mix', label: 'Jedes Mal anders' },
+] as const
+
 function SoundSection() {
-  const { music, gong } = useFamily().settings
+  const { music, musicStyle = 'mix', gong } = useFamily().settings
   const { updateSettings } = useFamilyActions()
+  // Leaving the page stops a song that is still playing as a preview.
+  useEffect(() => () => brushingAudio.stopPreview(), [])
   return (
     <Section title="Ton">
       <Toggle
-        label="Ruhige Musik beim Putzen"
+        label="Musik beim Putzen"
         checked={music}
         onChange={(v) => updateSettings({ music: v })}
       />
+      {music && (
+        <>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Musik">
+            {MUSIC_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={musicStyle === option.value}
+                onClick={() => {
+                  updateSettings({ musicStyle: option.value })
+                  if (option.value === 'mix') brushingAudio.stopPreview()
+                  else brushingAudio.preview(option.value)
+                }}
+                className={twMerge(
+                  'cursor-pointer select-none rounded-2xl border-4 px-2 py-3 text-center font-bold transition active:scale-95',
+                  musicStyle === option.value
+                    ? 'border-sun bg-white text-bark-900'
+                    : 'border-transparent bg-moss-50 text-bark-700',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-bark-600">
+            Antippen spielt ein paar Sekunden zum Reinhören. Der Gong bei jeder neuen Ecke passt
+            sich dem Lied an.
+          </p>
+        </>
+      )}
       <Toggle
         label="Gong bei jeder neuen Ecke"
         checked={gong}

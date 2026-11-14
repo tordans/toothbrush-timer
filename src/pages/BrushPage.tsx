@@ -16,6 +16,7 @@ import { Animal } from '@/features/forest/Animal'
 import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
 import { brushingAudio } from '@/features/timer/audio'
 import { MouthDial } from '@/features/timer/MouthDial'
+import { MUSIC_STYLES } from '@/features/timer/music'
 import { brushingSeconds, clockLabel, SECTIONS } from '@/features/timer/sections'
 import { useBrushingTimer } from '@/features/timer/use-brushing-timer'
 import { allowScreenOff, keepScreenOn } from '@/features/timer/wake-lock'
@@ -40,6 +41,14 @@ export function BrushPage() {
   const { gong } = family.settings
   // The music button here only affects this brushing; the family setting stays as it is.
   const [music, setMusic] = useState(family.settings.music)
+  // The song is chosen once per brushing; "mix" takes a different one each time.
+  const [style] = useState(() => {
+    const chosen = family.settings.musicStyle ?? 'mix'
+    return chosen === 'mix'
+      ? MUSIC_STYLES[Math.floor(Math.random() * MUSIC_STYLES.length)]!
+      : chosen
+  })
+  useEffect(() => brushingAudio.setStyle(style), [style])
   // Fixed when the page opens, so changing the setting on another phone does not jump the timer.
   const [totalSeconds] = useState(() => brushingSeconds(kid?.toothbrush))
 
