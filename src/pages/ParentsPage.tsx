@@ -3,7 +3,7 @@ import { subDays } from 'date-fns'
 import { useState, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
 import { ChevronLeft, MoonIcon, SunIcon } from '@/components/icons'
-import { AnimalBadge, AnimalPicker, Button, Card, Toggle } from '@/components/ui'
+import { AnimalBadge, AnimalPicker, Button, Card, Toggle, ToothbrushPicker } from '@/components/ui'
 import {
   useFamily,
   useFamilyActions,
@@ -13,7 +13,7 @@ import {
   type SyncStatus,
 } from '@/features/family/family-store'
 import { activeKids, brushingsFor } from '@/features/family/queries'
-import { SLOTS, type Animal as AnimalId, type Kid } from '@/features/family/schema'
+import { SLOTS, type Animal as AnimalId, type Kid, type Toothbrush } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
 import { renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
@@ -73,8 +73,8 @@ function KidsSection() {
         <KidForm
           submitLabel="Hinzufügen"
           onCancel={() => setAdding(false)}
-          onSubmit={(name, animal) => {
-            addKid(name, animal)
+          onSubmit={(name, animal, toothbrush) => {
+            addKid(name, animal, toothbrush)
             setAdding(false)
           }}
         />
@@ -96,6 +96,7 @@ function KidRow({ kid }: { kid: Kid }) {
       <KidForm
         initialName={kid.name}
         initialAnimal={kid.animal}
+        initialToothbrush={kid.toothbrush ?? 'electric'}
         submitLabel="Speichern"
         onCancel={() => setEditing(false)}
         onDelete={() => {
@@ -105,8 +106,8 @@ function KidRow({ kid }: { kid: Kid }) {
             deleteKid(kid.id)
           }
         }}
-        onSubmit={(name, animal) => {
-          updateKid(kid.id, { name, animal })
+        onSubmit={(name, animal, toothbrush) => {
+          updateKid(kid.id, { name, animal, toothbrush })
           setEditing(false)
         }}
       />
@@ -117,7 +118,10 @@ function KidRow({ kid }: { kid: Kid }) {
       <AnimalBadge animal={kid.animal} />
       <div className="flex-1">
         <p className="text-lg font-extrabold">{kid.name}</p>
-        <p className="text-sm text-bark-600">putzt mit {ANIMAL_NAMES[kid.animal]}</p>
+        <p className="text-sm text-bark-600">
+          putzt mit {ANIMAL_NAMES[kid.animal]} ·{' '}
+          {kid.toothbrush === 'manual' ? 'Handzahnbürste, 3 Minuten' : 'elektrisch, 2 Minuten'}
+        </p>
       </div>
       <Button variant="secondary" onClick={() => setEditing(true)}>
         Ändern
@@ -129,6 +133,7 @@ function KidRow({ kid }: { kid: Kid }) {
 function KidForm({
   initialName = '',
   initialAnimal = 'fox',
+  initialToothbrush = null,
   submitLabel,
   onSubmit,
   onCancel,
@@ -136,19 +141,21 @@ function KidForm({
 }: {
   initialName?: string
   initialAnimal?: AnimalId
+  initialToothbrush?: Toothbrush | null
   submitLabel: string
-  onSubmit: (name: string, animal: AnimalId) => void
+  onSubmit: (name: string, animal: AnimalId, toothbrush: Toothbrush) => void
   onCancel: () => void
   onDelete?: () => void
 }) {
   const [name, setName] = useState(initialName)
   const [animal, setAnimal] = useState<AnimalId>(initialAnimal)
+  const [toothbrush, setToothbrush] = useState<Toothbrush | null>(initialToothbrush)
   return (
     <form
       className="flex flex-col gap-3 rounded-2xl bg-moss-50 p-3"
       onSubmit={(e) => {
         e.preventDefault()
-        if (name.trim()) onSubmit(name.trim(), animal)
+        if (name.trim() && toothbrush) onSubmit(name.trim(), animal, toothbrush)
       }}
     >
       <input
@@ -160,8 +167,9 @@ function KidForm({
         className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 text-lg font-bold"
       />
       <AnimalPicker value={animal} onChange={setAnimal} />
+      <ToothbrushPicker value={toothbrush} onChange={setToothbrush} />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={!name.trim()}>
+        <Button type="submit" disabled={!name.trim() || !toothbrush}>
           {submitLabel}
         </Button>
         <Button variant="secondary" onClick={onCancel}>

@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { TIMELINE_SECONDS, timerPosition } from './sections'
+import { timelineSeconds, timerPosition } from './sections'
 
 // Dev only: localStorage 'brush-speed' = 20 runs the two minutes in six seconds.
 const SPEED = import.meta.env.DEV ? Number(localStorage.getItem('brush-speed') ?? '1') || 1 : 1
@@ -7,6 +7,8 @@ const SPEED = import.meta.env.DEV ? Number(localStorage.getItem('brush-speed') ?
 export type Phase = 'ready' | 'running' | 'paused' | 'done'
 
 type Callbacks = {
+  /** Brushing seconds without breaks (120 or 180). */
+  totalSeconds: number
   /** A corner is done and the short break before `sectionIndex` begins. */
   onSectionChange: (sectionIndex: number) => void
   onDone: () => void
@@ -18,7 +20,12 @@ type Callbacks = {
  * Two-minute timer based on the clock, not on counting ticks, so a slow phone does not stretch
  * the time. Pauses itself when the page is hidden (screen off, other app).
  */
-export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callbacks) {
+export function useBrushingTimer({
+  totalSeconds,
+  onSectionChange,
+  onDone,
+  onAutoPause,
+}: Callbacks) {
   const [phase, setPhase] = useState<Phase>('ready')
   const [elapsedMs, setElapsedMs] = useState(0)
   const accumulated = useRef(0)
@@ -38,10 +45,10 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
       // otherwise "done" could fire twice.
       if (since.current == null) return
       const ms = read()
-      const pos = timerPosition(ms)
+      const pos = timerPosition(ms, totalSeconds)
       setElapsedMs(ms)
       if (pos.done) {
-        accumulated.current = TIMELINE_SECONDS * 1000
+        accumulated.current = timelineSeconds(totalSeconds) * 1000
         since.current = null
         setPhase('done')
         finished()
@@ -53,7 +60,7 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
       }
     }, 200)
     return () => clearInterval(id)
-  }, [phase])
+  }, [phase, totalSeconds])
 
   useEffect(() => {
     const onVisibility = () => {
@@ -72,7 +79,7 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
   return {
     phase,
     elapsedMs,
-    position: timerPosition(elapsedMs),
+    position: timerPosition(elapsedMs, totalSeconds),
     start: () => {
       since.current = performance.now()
       setPhase('running')
@@ -91,6 +98,6 @@ export function useBrushingTimer({ onSectionChange, onDone, onAutoPause }: Callb
       setPhase('running')
     },
     /** Seconds brushed right now, breaks not counted (for "stop early"). */
-    brushedSeconds: () => Math.floor(timerPosition(read()).brushed),
+    brushedSeconds: () => Math.floor(timerPosition(read(), totalSeconds).brushed),
   }
 }

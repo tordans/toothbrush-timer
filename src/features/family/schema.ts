@@ -4,6 +4,10 @@ export const ANIMALS = ['fox', 'hedgehog', 'owl', 'rabbit', 'squirrel', 'bear'] 
 const animalSchema = z.enum(ANIMALS)
 export type Animal = z.infer<typeof animalSchema>
 
+const TOOTHBRUSHES = ['electric', 'manual'] as const
+const toothbrushSchema = z.enum(TOOTHBRUSHES)
+export type Toothbrush = z.infer<typeof toothbrushSchema>
+
 export const SLOTS = ['morning', 'evening'] as const
 export const slotSchema = z.enum(SLOTS)
 export type Slot = z.infer<typeof slotSchema>
@@ -15,6 +19,8 @@ const kidSchema = z.object({
   id: z.string(),
   name: z.string().max(40),
   animal: animalSchema,
+  /** Missing in data from before this setting existed: counts as electric. */
+  toothbrush: toothbrushSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   deleted: z.boolean().optional(),

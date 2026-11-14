@@ -16,7 +16,7 @@ import { Animal } from '@/features/forest/Animal'
 import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
 import { brushingAudio } from '@/features/timer/audio'
 import { MouthDial } from '@/features/timer/MouthDial'
-import { clockLabel, SECTIONS, TOTAL_SECONDS } from '@/features/timer/sections'
+import { brushingSeconds, clockLabel, SECTIONS } from '@/features/timer/sections'
 import { useBrushingTimer } from '@/features/timer/use-brushing-timer'
 import { allowScreenOff, keepScreenOn } from '@/features/timer/wake-lock'
 import { isoDay } from '@/lib/dates'
@@ -31,9 +31,6 @@ const CORNER_POSITION = {
   'bottom-left': { left: '-14%', top: '68%' },
 } as const
 
-/** Brushed at least this long counts when stopping early (and the child confirms). */
-const MIN_COUNT_SECONDS = 60
-
 export function BrushPage() {
   const { kid: kidId, slot } = route.useSearch()
   const navigate = useNavigate()
@@ -41,6 +38,8 @@ export function BrushPage() {
   const { recordBrushing, updateSettings } = useFamilyActions()
   const kid = family.kids[kidId]
   const { music, gong } = family.settings
+  // Fixed when the page opens, so changing the setting on another phone does not jump the timer.
+  const [totalSeconds] = useState(() => brushingSeconds(kid?.toothbrush))
 
   // Date of the brushing is fixed when the page opens (brushing across midnight stays "today").
   const [date] = useState(() => isoDay(new Date()))
@@ -57,6 +56,7 @@ export function BrushPage() {
   }
 
   const timer = useBrushingTimer({
+    totalSeconds,
     onSectionChange: () => {
       if (gong) brushingAudio.switchJingle()
     },
@@ -64,7 +64,7 @@ export function BrushPage() {
       brushingAudio.stopMusic()
       if (gong) brushingAudio.finishMelody()
       allowScreenOff()
-      record(TOTAL_SECONDS)
+      record(totalSeconds)
     },
     onAutoPause: () => brushingAudio.stopMusic(),
   })
@@ -208,7 +208,9 @@ export function BrushPage() {
           <div className="flex flex-col items-center gap-4 text-center landscape:items-start landscape:text-left">
             {timer.phase === 'ready' ? (
               <>
-                <h1 className="text-3xl font-extrabold sm:text-4xl">Zwei Minuten, vier Ecken.</h1>
+                <h1 className="text-3xl font-extrabold sm:text-4xl">
+                  {totalSeconds === 180 ? 'Drei' : 'Zwei'} Minuten, vier Ecken.
+                </h1>
                 <p className="max-w-sm text-lg font-semibold opacity-80">
                   Oben links, oben rechts, unten rechts, unten links. Bei jedem Gong geht es weiter.
                 </p>
@@ -264,6 +266,7 @@ export function BrushPage() {
       {askStop && (
         <StopDialog
           elapsed={timer.brushedSeconds()}
+          total={totalSeconds}
           onContinue={() => {
             setAskStop(false)
             resume()
@@ -326,11 +329,13 @@ function Done({
 
 function StopDialog({
   elapsed,
+  total,
   onContinue,
   onCount,
   onDiscard,
 }: {
   elapsed: number
+  total: number
   onContinue: () => void
   onCount: () => void
   onDiscard: () => void
@@ -339,11 +344,13 @@ function StopDialog({
     <div className="absolute inset-0 flex items-center justify-center bg-black/40 p-4">
       <Card className="flex w-full max-w-md animate-fadein flex-col gap-3 text-bark-900">
         <h2 className="text-2xl font-extrabold">Schon aufhören?</h2>
-        <p className="font-semibold">Du hast {clockLabel(elapsed)} von 2:00 geputzt.</p>
+        <p className="font-semibold">
+          Du hast {clockLabel(elapsed)} von {clockLabel(total)} geputzt.
+        </p>
         <Button size="lg" onClick={onContinue}>
           Weiterputzen
         </Button>
-        {elapsed >= MIN_COUNT_SECONDS && (
+        {elapsed >= total / 2 && (
           <Button size="lg" variant="secondary" onClick={onCount}>
             Als geputzt eintragen
           </Button>

@@ -1,6 +1,6 @@
 import { useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
-import { ANIMALS, type Animal as AnimalId } from '@/features/family/schema'
+import { ANIMALS, type Animal as AnimalId, type Toothbrush } from '@/features/family/schema'
 import { Animal, ANIMAL_NAMES } from '@/features/forest/Animal'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -204,5 +204,42 @@ export function Toggle({
         />
       </span>
     </button>
+  )
+}
+
+const TOOTHBRUSH_OPTIONS: { value: Toothbrush; label: string; detail: string }[] = [
+  { value: 'electric', label: 'Elektrische Zahnbürste', detail: '2 Minuten' },
+  { value: 'manual', label: 'Handzahnbürste', detail: '3 Minuten' },
+]
+
+/** Electric or manual brush; decides how long the timer runs. Nothing is preselected. */
+export function ToothbrushPicker({
+  value,
+  onChange,
+}: {
+  value: Toothbrush | null
+  onChange: (toothbrush: Toothbrush) => void
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Zahnbürste">
+      {TOOTHBRUSH_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={twMerge(
+            'flex flex-col items-center rounded-2xl border-4 px-2 py-3 text-center font-bold transition-colors',
+            value === option.value
+              ? 'border-sun bg-white text-bark-900'
+              : 'border-transparent bg-moss-50 text-bark-700',
+          )}
+        >
+          {option.label}
+          <span className="text-sm font-semibold opacity-75">{option.detail}</span>
+        </button>
+      ))}
+    </div>
   )
 }

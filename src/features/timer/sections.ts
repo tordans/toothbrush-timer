@@ -1,11 +1,18 @@
-/** Brushing time without the short breaks between corners. */
-export const TOTAL_SECONDS = 120
+import type { Toothbrush } from '@/features/family/schema'
+
 const SECTION_COUNT = 4
-const SECTION_SECONDS = TOTAL_SECONDS / SECTION_COUNT
 /** Short break between two corners: the animal waves, a jingle plays, then it goes on. */
 const SWITCH_SECONDS = 3
+
+/** Brushing time without the breaks: 2 minutes with an electric brush, 3 by hand. */
+export function brushingSeconds(toothbrush: Toothbrush | undefined): number {
+  return toothbrush === 'manual' ? 180 : 120
+}
+
 /** Full run: four corners plus three breaks. */
-export const TIMELINE_SECONDS = TOTAL_SECONDS + (SECTION_COUNT - 1) * SWITCH_SECONDS
+export function timelineSeconds(totalSeconds: number): number {
+  return totalSeconds + (SECTION_COUNT - 1) * SWITCH_SECONDS
+}
 
 /**
  * Seen like in a mirror: the child's own left is on the left of the screen. The order goes
@@ -32,39 +39,41 @@ export type TimerPosition = {
   done: boolean
 }
 
-export function timerPosition(elapsedMs: number): TimerPosition {
-  const t = Math.min(Math.max(elapsedMs / 1000, 0), TIMELINE_SECONDS)
-  if (t >= TIMELINE_SECONDS) {
+export function timerPosition(elapsedMs: number, totalSeconds = 120): TimerPosition {
+  const sectionSeconds = totalSeconds / SECTION_COUNT
+  const timeline = timelineSeconds(totalSeconds)
+  const t = Math.min(Math.max(elapsedMs / 1000, 0), timeline)
+  if (t >= timeline) {
     return {
       sectionIndex: SECTION_COUNT,
       switching: false,
       sectionProgress: 1,
-      brushed: TOTAL_SECONDS,
+      brushed: totalSeconds,
       totalRemaining: 0,
       done: true,
     }
   }
-  const slot = SECTION_SECONDS + SWITCH_SECONDS
+  const slot = sectionSeconds + SWITCH_SECONDS
   const i = Math.floor(t / slot)
   const inSlot = t - i * slot
-  if (inSlot < SECTION_SECONDS) {
-    const brushed = i * SECTION_SECONDS + inSlot
+  if (inSlot < sectionSeconds) {
+    const brushed = i * sectionSeconds + inSlot
     return {
       sectionIndex: i,
       switching: false,
-      sectionProgress: inSlot / SECTION_SECONDS,
+      sectionProgress: inSlot / sectionSeconds,
       brushed,
-      totalRemaining: Math.ceil(TOTAL_SECONDS - brushed),
+      totalRemaining: Math.ceil(totalSeconds - brushed),
       done: false,
     }
   }
-  const brushed = (i + 1) * SECTION_SECONDS
+  const brushed = (i + 1) * sectionSeconds
   return {
     sectionIndex: i + 1,
     switching: true,
     sectionProgress: 0,
     brushed,
-    totalRemaining: Math.ceil(TOTAL_SECONDS - brushed),
+    totalRemaining: Math.ceil(totalSeconds - brushed),
     done: false,
   }
 }

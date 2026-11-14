@@ -9,10 +9,17 @@ import {
   MoonIcon,
   SunIcon,
 } from '@/components/icons'
-import { AnimalBadge, AnimalPicker, Button, Card, HoldButton } from '@/components/ui'
+import {
+  AnimalBadge,
+  AnimalPicker,
+  Button,
+  Card,
+  HoldButton,
+  ToothbrushPicker,
+} from '@/components/ui'
 import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { activeKids, isBrushed } from '@/features/family/queries'
-import type { Animal as AnimalId, Slot } from '@/features/family/schema'
+import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor } from '@/features/forest/scenery'
 import { usePortrait } from '@/hooks/use-media'
@@ -207,6 +214,7 @@ function FirstKid() {
   const { addKid } = useFamilyActions()
   const [name, setName] = useState('')
   const [animal, setAnimal] = useState<AnimalId>('fox')
+  const [toothbrush, setToothbrush] = useState<Toothbrush | null>(null)
 
   return (
     <div className="absolute inset-0 flex overflow-y-auto bg-moss-950/30 p-4">
@@ -214,7 +222,7 @@ function FirstKid() {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (name.trim()) addKid(name.trim(), animal)
+            if (name.trim() && toothbrush) addKid(name.trim(), animal, toothbrush)
           }}
           className="flex flex-col gap-4"
         >
@@ -236,7 +244,11 @@ function FirstKid() {
             Welches Tier putzt mit?
             <AnimalPicker value={animal} onChange={setAnimal} />
           </div>
-          <Button type="submit" size="lg" disabled={!name.trim()}>
+          <div className="flex flex-col gap-1 font-bold">
+            Womit wird geputzt?
+            <ToothbrushPicker value={toothbrush} onChange={setToothbrush} />
+          </div>
+          <Button type="submit" size="lg" disabled={!name.trim() || !toothbrush}>
             In den Wald
           </Button>
           <p className="text-sm text-bark-600">

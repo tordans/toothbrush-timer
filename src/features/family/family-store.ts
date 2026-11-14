@@ -9,6 +9,7 @@ import {
   type FamilyState,
   type Settings,
   type Slot,
+  type Toothbrush,
 } from './schema'
 
 export type SyncStatus =
@@ -31,8 +32,11 @@ type FamilyStore = {
   syncStatus: SyncStatus
   lastSyncedAt: string | null
   actions: {
-    addKid: (name: string, animal: Animal) => string
-    updateKid: (id: string, patch: { name?: string; animal?: Animal }) => void
+    addKid: (name: string, animal: Animal, toothbrush: Toothbrush) => string
+    updateKid: (
+      id: string,
+      patch: { name?: string; animal?: Animal; toothbrush?: Toothbrush },
+    ) => void
     deleteKid: (id: string) => void
     setActiveKid: (id: string) => void
     recordBrushing: (input: { kidId: string; date: string; slot: Slot; seconds: number }) => void
@@ -61,12 +65,15 @@ const useFamilyStore = create<FamilyStore>()(
         syncStatus: 'local',
         lastSyncedAt: null,
         actions: {
-          addKid: (name, animal) => {
+          addKid: (name, animal, toothbrush) => {
             const id = newId()
             const now = nowIso()
             change((f) => ({
               ...f,
-              kids: { ...f.kids, [id]: { id, name, animal, createdAt: now, updatedAt: now } },
+              kids: {
+                ...f.kids,
+                [id]: { id, name, animal, toothbrush, createdAt: now, updatedAt: now },
+              },
             }))
             set({ activeKidId: id })
             return id

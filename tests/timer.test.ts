@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { clockLabel, SECTIONS, TIMELINE_SECONDS, timerPosition } from '@/features/timer/sections'
+import {
+  brushingSeconds,
+  clockLabel,
+  SECTIONS,
+  timelineSeconds,
+  timerPosition,
+} from '@/features/timer/sections'
 import { daysAround, slotForTime } from '@/lib/dates'
 
 describe('timerPosition', () => {
@@ -26,12 +32,25 @@ describe('timerPosition', () => {
   })
 
   it('is done after four corners and three breaks and never goes beyond', () => {
-    expect(TIMELINE_SECONDS).toBe(129)
+    expect(timelineSeconds(120)).toBe(129)
     const p = timerPosition(500_000)
     expect(p.done).toBe(true)
     expect(p.sectionIndex).toBe(4)
     expect(p.totalRemaining).toBe(0)
     expect(p.brushed).toBe(120)
+  })
+
+  it('takes three minutes with a manual brush, 45 seconds per corner', () => {
+    expect(brushingSeconds('manual')).toBe(180)
+    expect(brushingSeconds('electric')).toBe(120)
+    expect(brushingSeconds(undefined)).toBe(120)
+    expect(timerPosition(44_000, 180).sectionIndex).toBe(0)
+    const pause = timerPosition(46_000, 180)
+    expect(pause.switching).toBe(true)
+    expect(pause.totalRemaining).toBe(135)
+    expect(timerPosition(48_000, 180).sectionIndex).toBe(1)
+    expect(timerPosition(189_000, 180).done).toBe(true)
+    expect(timerPosition(188_000, 180).done).toBe(false)
   })
 
   it('has four corners in a continuous order', () => {
