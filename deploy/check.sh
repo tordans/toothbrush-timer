@@ -65,6 +65,9 @@ fetch "$base/"
 index_ok=1
 [ "$status" = "200" ] && header content-type | grep -qi 'text/html' && [ "$(header cache-control)" = "no-cache" ] && index_ok=0
 result "GET / is HTML and revalidated" "$index_ok" "status $status, cache-control: $(header cache-control)"
+csp_ok=1
+header content-security-policy | grep -q "default-src 'self'" && csp_ok=0
+result "/ sends a Content-Security-Policy (only this site)" "$csp_ok" "$(header content-security-policy | head -c 80)"
 cp "$tmp/body" "$tmp/index.html"
 
 asset="$(grep -oE '/assets/[^"'"'"' )]+\.(js|css)' "$tmp/index.html" | head -n 1)"

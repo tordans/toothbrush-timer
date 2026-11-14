@@ -25,18 +25,23 @@ and the animal. The only "reward" is that the week in the forest fills up.
 
 ## Data and sync
 
-Every phone stores the state in `localStorage` and works without a network. With a family link
-(`https://brush.ingsparks.de/#key=…`) phones also sync through a small PHP API with MariaDB on the
-all-inkl web space.
+Every family lives on the server (a small PHP API with MariaDB on the all-inkl web space); each
+phone keeps a copy in `localStorage`, works without a network and syncs later. There is no
+local-only mode.
 
-**Several families, one server.** A family is created in the app ("Für Eltern" → "Neue Familie
-anlegen") with an invite word that the owner hands out in person; the server answers with a new
-family key and the app shows the family link. There is no sign-up and no login. The link can be
-renewed in the app; the old one stops working at once. Records (children, brushings, settings) carry `updatedAt` and are merged one by
-one; deletes are kept as tombstones. So two phones that brushed offline never lose each other's
-entries, and a conflict on the server (`409`) is merged and saved again.
+- **Start:** without a family link the app shows a start screen. With the invite word (handed out
+  in person) the server creates a new family and the app continues with "Wer putzt hier die Zähne?".
+  This is also the address to give to friends: they get their own, separate family.
+- **Further phones:** open the family link (`https://brush.ingsparks.de/#key=…`), found under
+  "Für Eltern" → "Weitere Handys" (copy or share). There the link can also be renewed (the old one
+  stops working at once) and the device signed out.
+- **Merging:** records (children, brushings, settings) carry `updatedAt` and are merged one by one;
+  deletes are kept as tombstones. Two phones that brushed offline never lose each other's entries,
+  and a conflict on the server (`409`) is merged and saved again.
 
-Server, endpoints, the family link, rotating it and deployment: [docs/central-storage.md](docs/central-storage.md).
+Privacy (what is stored where, who can read it, deleting): [docs/datenschutz.md](docs/datenschutz.md),
+short version in the app at `/datenschutz`. Server, endpoints and deployment:
+[docs/central-storage.md](docs/central-storage.md).
 
 ## Supported devices
 
@@ -64,8 +69,7 @@ bun run dev      # http://localhost:5287, /api is proxied to the local API
 
 If port 8088 is taken, set `BRUSH_API_PORT` (e.g. `8089`) for `api-up`, `api-test` and `dev`.
 
-To try the server sync locally: "Für Eltern" → "Neue Familie anlegen" with the throwaway invite word
-`dev-invite` (from `api/tests/config.php`). Without a family the app only stores locally.
+Locally the start screen takes the throwaway invite word `dev-invite` (from `api/tests/config.php`).
 
 Dev shortcut: `localStorage.setItem('brush-speed', '20')` runs the two minutes in six seconds
 (only in `bun run dev`).

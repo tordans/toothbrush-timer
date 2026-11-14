@@ -5,20 +5,6 @@ const BRUSH_INVITE_MAX_FAILED_PER_HOUR = 10; // failed invite attempts per IP ha
 const BRUSH_MAX_NEW_FAMILIES_PER_DAY = 5;    // new families in the last 24 hours, all visitors together
 const BRUSH_MAX_FAMILIES = 100;              // families in total
 
-/**
- * Hash of the visitor's IP address with a salt that is different every UTC day and unknown without
- * the secret in config.php. The plain address is never stored.
- */
-function invite_ip_hash(): string
-{
-    $secret = (string) (brush_config()['ip_salt_secret'] ?? '');
-    if ($secret === '') {
-        throw new RuntimeException('ip_salt_secret is not configured');
-    }
-    $salt = hash_hmac('sha256', gmdate('Y-m-d'), $secret);
-    return hash_hmac('sha256', $_SERVER['REMOTE_ADDR'] ?? 'unknown', $salt);
-}
-
 function invite_matches(string $given): bool
 {
     $expected = (string) (brush_config()['invite_sha256'] ?? '');
@@ -49,7 +35,7 @@ function handle_families_create(): never
     $given = isset($body->invite) && is_string($body->invite) ? $body->invite : '';
 
     $pdo = db();
-    $ipHash = invite_ip_hash();
+    $ipHash = ip_hash();
 
     $pdo->exec('DELETE FROM invite_attempts WHERE attempted_at < UTC_TIMESTAMP(3) - INTERVAL 1 HOUR');
     $failed = count_rows($pdo, 'SELECT COUNT(*) FROM invite_attempts WHERE ip_hash = ?', [$ipHash]);

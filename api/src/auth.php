@@ -13,10 +13,23 @@ function bearer_token(): ?string
     return $m[1];
 }
 
+/**
+ * Hash of the visitor's IP address with a salt that is different every UTC day and unknown without
+ * the secret in config.php. The plain address is never stored.
+ */
+function ip_hash(): string
+{
+    $secret = (string) (brush_config()['ip_salt_secret'] ?? '');
+    if ($secret === '') {
+        throw new RuntimeException('ip_salt_secret is not configured');
+    }
+    $salt = hash_hmac('sha256', gmdate('Y-m-d'), $secret);
+    return hash_hmac('sha256', $_SERVER['REMOTE_ADDR'] ?? 'unknown', $salt);
+}
+
 function throttle_file(): string
 {
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    return BRUSH_ROOT . '/logs/throttle/' . hash('sha256', $ip) . '.txt';
+    return BRUSH_ROOT . '/logs/throttle/' . ip_hash() . '.txt';
 }
 
 /** Timestamps of recent failures from this IP. */

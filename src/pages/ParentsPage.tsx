@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { subDays } from 'date-fns'
 import { useState, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
@@ -15,7 +15,7 @@ import {
 import { activeKids, brushingsFor } from '@/features/family/queries'
 import { SLOTS, type Animal as AnimalId, type Kid } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
-import { createFamily, renewFamilyKey } from '@/features/sync/api'
+import { renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
 import { useNow } from '@/hooks/use-now'
 import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
@@ -283,13 +283,17 @@ function SoundSection() {
 }
 
 const STATUS_TEXT: Record<SyncStatus, string> = {
-  local: 'Nur auf diesem Gerät gespeichert.',
+  local: 'Nicht verbunden.',
   syncing: 'Gleicht ab …',
-  synced: 'Mit dem Familien-Speicher abgeglichen.',
+  synced: 'Alles gespeichert.',
   offline: 'Keine Verbindung. Wird nachgeholt, sobald das Gerät wieder online ist.',
   unauthorized: 'Der Familien-Link gilt nicht mehr. Bitte den neuen Link öffnen.',
   incompatible:
     'Auf dem Server liegen Daten einer neueren Version. Bitte die Seite neu laden. Bis dahin wird nur auf diesem Gerät gespeichert.',
+}
+
+type ShareNavigator = Navigator & {
+  share?: (data: { title?: string; url?: string }) => Promise<void>
 }
 
 function DevicesSection() {
@@ -297,130 +301,100 @@ function DevicesSection() {
   const status = useSyncStatus()
   const lastSyncedAt = useLastSyncedAt()
   const { connect, disconnect } = useFamilyActions()
-  const [input, setInput] = useState('')
-  const [showLink, setShowLink] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const link = familyKey ? `${window.location.origin}/#key=${encodeURIComponent(familyKey)}` : ''
+  const nav = navigator as ShareNavigator
+
+  const copy = () => {
+    void navigator.clipboard?.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
 
   const renew = async () => {
     if (!familyKey) return
     if (
       !window.confirm(
-        'Neuen Familien-Link erzeugen? Der alte Link geht dann sofort nicht mehr. Andere Handys müssen den neuen Link öffnen.',
+        'Neuen Familien-Link erzeugen? Der alte Link geht dann sofort nicht mehr, auch auf den anderen Handys. Dort müsst ihr den neuen Link öffnen.',
       )
     )
       return
     const result = await renewFamilyKey(familyKey)
-    if (result.kind === 'ok') {
-      connect(result.key)
-      setShowLink(true)
-    } else {
+    if (result.kind === 'ok') connect(result.key)
+    else
       window.alert(
         result.kind === 'unauthorized'
           ? 'Der aktuelle Link gilt schon nicht mehr.'
           : 'Keine Verbindung zum Server. Bitte später noch einmal versuchen.',
       )
-    }
-  }
-
-  const submit = () => {
-    const value = input.trim()
-    const match = /key=([^&\s]+)/.exec(value)
-    const key = match?.[1] ? decodeURIComponent(match[1]) : value
-    if (key.length >= 16) {
-      connect(key)
-      setInput('')
-    }
   }
 
   return (
-    <Section title="Handys verbinden">
+    <Section title="Weitere Handys">
+      <p className="text-sm text-bark-700">
+        Öffnet diesen Familien-Link auf jedem Handy, das mitmachen soll. Alle sehen dann dieselben
+        Kinder und dieselbe Woche. Wer den Link hat, kann alles sehen und ändern, also nur in der
+        Familie weitergeben und am besten im Passwortmanager speichern.
+      </p>
+      <input
+        readOnly
+        value={link}
+        aria-label="Familien-Link"
+        onFocus={(e) => e.currentTarget.select()}
+        className="rounded-xl border-2 border-bark-200 bg-white px-3 py-2 font-mono text-sm"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={copy}>{copied ? 'Kopiert' : 'Link kopieren'}</Button>
+        {nav.share && (
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void nav.share?.({ title: 'Zähneputzen', url: link }).catch(() => undefined)
+            }
+          >
+            Teilen …
+          </Button>
+        )}
+      </div>
       <p
         className={twMerge(
-          'rounded-2xl px-4 py-3 font-bold',
-          status === 'synced' && 'bg-moss-100 text-moss-800',
-          status === 'local' && 'bg-bark-100 text-bark-800',
-          (status === 'offline' || status === 'syncing') && 'bg-[#fdf1cf] text-bark-800',
-          (status === 'unauthorized' || status === 'incompatible') && 'bg-[#fbd9d4] text-[#8a2f25]',
+          'rounded-2xl px-4 py-2 text-sm font-bold',
+          status === 'synced' || status === 'syncing'
+            ? 'bg-moss-100 text-moss-800'
+            : 'bg-[#fbd9d4] text-[#8a2f25]',
         )}
       >
         {STATUS_TEXT[status]}
-        {lastSyncedAt && status !== 'local' && (
-          <span className="block text-sm font-semibold opacity-75">
-            Zuletzt abgeglichen um {timeLabel(lastSyncedAt)}
-          </span>
+        {lastSyncedAt &&
+          status === 'synced' &&
+          ` Zuletzt abgeglichen um ${timeLabel(lastSyncedAt)}.`}
+        {status !== 'synced' && status !== 'syncing' && (
+          <button type="button" className="ml-2 underline" onClick={() => void syncNow()}>
+            Erneut versuchen
+          </button>
         )}
       </p>
-
-      {familyKey ? (
-        <>
-          <p className="text-sm text-bark-600">
-            Alle Geräte mit demselben Familien-Link sehen dieselben Kinder und Putz-Tage. Ohne Netz
-            wird lokal gespeichert und später zusammengeführt.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => void syncNow()}>
-              Jetzt abgleichen
-            </Button>
-            <Button variant="secondary" onClick={() => setShowLink((v) => !v)}>
-              {showLink ? 'Link verbergen' : 'Link für ein weiteres Gerät'}
-            </Button>
-            <Button variant="secondary" onClick={() => void renew()}>
-              Neuen Link erzeugen
-            </Button>
-            <Button
-              variant="danger"
-              className="ml-auto"
-              onClick={() => {
-                if (window.confirm('Dieses Gerät vom Familien-Speicher trennen?')) disconnect()
-              }}
-            >
-              Trennen
-            </Button>
-          </div>
-          {showLink && (
-            <div className="flex flex-col gap-2 rounded-2xl bg-white p-3">
-              <p className="text-sm font-bold">
-                Diesen Link auf dem anderen Gerät öffnen. Wer ihn hat, kann alles sehen und ändern,
-                also nur in der Familie weitergeben.
-              </p>
-              <input
-                readOnly
-                value={link}
-                onFocus={(e) => e.currentTarget.select()}
-                className="rounded-xl border-2 border-bark-200 px-3 py-2 font-mono text-sm"
-              />
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <form
-            className="flex flex-col gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              submit()
-            }}
-          >
-            <h3 className="font-extrabold">Familien-Link schon vorhanden</h3>
-            <p className="text-sm text-bark-600">
-              Den Link vom anderen Handy hier öffnen oder einfügen. Was auf diesem Gerät schon
-              eingetragen ist, bleibt erhalten und wird übernommen.
-            </p>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="https://brush.ingsparks.de/#key=…"
-              aria-label="Familien-Link"
-              className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 font-mono text-sm"
-            />
-            <Button type="submit" disabled={input.trim().length < 16}>
-              Verbinden
-            </Button>
-          </form>
-          <CreateFamilyForm onCreated={connect} />
-        </>
-      )}
+      <div className="flex flex-wrap gap-2 border-t-2 border-bark-100 pt-4">
+        <Button variant="secondary" onClick={() => void renew()}>
+          Neuen Link erzeugen
+        </Button>
+        <Button
+          variant="danger"
+          className="ml-auto"
+          onClick={() => {
+            if (
+              window.confirm(
+                'Auf diesem Gerät abmelden? Die Einträge bleiben auf dem Server. Zum Zurückkommen braucht ihr den Familien-Link.',
+              )
+            )
+              disconnect()
+          }}
+        >
+          Auf diesem Gerät abmelden
+        </Button>
+      </div>
     </Section>
   )
 }
@@ -434,57 +408,12 @@ function AboutSection() {
         Blume oder zündet eine Laterne an, und die Woche im Wald füllt sich.
       </p>
       <p className="text-sm text-bark-600">
-        Die Daten liegen auf diesem Gerät und, wenn verbunden, auf unserem eigenen Webspace in
-        Deutschland. Keine Werbung, kein Tracking.
+        Die Daten liegen auf unserem eigenen Webspace in Deutschland und als Kopie auf diesem Gerät.
+        Keine Werbung, kein Tracking.{' '}
+        <Link to="/datenschutz" className="font-bold text-moss-700 underline">
+          Datenschutz und Impressum
+        </Link>
       </p>
     </Section>
-  )
-}
-
-const CREATE_ERRORS = {
-  invalid_invite: 'Das Einladungswort stimmt nicht.',
-  too_many: 'Zu viele Versuche. Bitte in einer Stunde noch einmal.',
-  full: 'Auf dem Server ist gerade kein Platz für neue Familien.',
-  offline: 'Keine Verbindung zum Server. Bitte später noch einmal versuchen.',
-} as const
-
-/** A new family on the server. Only with the invite word, which is handed out in person. */
-function CreateFamilyForm({ onCreated }: { onCreated: (key: string) => void }) {
-  const [invite, setInvite] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  return (
-    <form
-      className="flex flex-col gap-2 border-t-2 border-bark-100 pt-4"
-      onSubmit={(e) => {
-        e.preventDefault()
-        setBusy(true)
-        setError(null)
-        void createFamily(invite.trim()).then((result) => {
-          setBusy(false)
-          if (result.kind === 'ok') onCreated(result.key)
-          else setError(CREATE_ERRORS[result.kind])
-        })
-      }}
-    >
-      <h3 className="font-extrabold">Neue Familie anlegen</h3>
-      <p className="text-sm text-bark-600">
-        Damit mehrere Handys dieselbe Woche zeigen, legt ihr eure Familie auf dem Server an. Dafür
-        braucht ihr das Einladungswort. Danach gibt es einen Familien-Link für die anderen Handys.
-      </p>
-      <input
-        value={invite}
-        onChange={(e) => setInvite(e.target.value)}
-        placeholder="Einladungswort"
-        aria-label="Einladungswort"
-        autoComplete="off"
-        className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 text-base"
-      />
-      {error && <p className="text-sm font-bold text-[#8a2f25]">{error}</p>}
-      <Button type="submit" disabled={busy || invite.trim().length === 0}>
-        {busy ? 'Lege an …' : 'Familie anlegen'}
-      </Button>
-    </form>
   )
 }

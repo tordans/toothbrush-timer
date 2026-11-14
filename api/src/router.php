@@ -7,10 +7,15 @@ function brush_handle_request(): void
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
-    // One line per request, written when the script ends. Only method, path, status, duration.
+    // Only server errors are logged (method, path, status, duration; never request content or IP).
+    // Normal requests already appear in the hoster's access log.
     register_shutdown_function(static function () use ($start, $method, $path): void {
+        $status = http_response_code() ?: 200;
+        if ($status < 500) {
+            return;
+        }
         $ms = (int) round((hrtime(true) - $start) / 1e6);
-        log_line(sprintf('%s %s %d %dms', $method, $path, http_response_code() ?: 200, $ms));
+        log_line(sprintf('%s %s %d %dms', $method, $path, $status, $ms));
     });
 
     set_exception_handler(static function (Throwable $e): void {

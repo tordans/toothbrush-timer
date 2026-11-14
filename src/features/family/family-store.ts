@@ -133,8 +133,17 @@ const useFamilyStore = create<FamilyStore>()(
           connect: (familyKey) =>
             // dirty: the local data is pushed (merged) on the first sync with the server
             set({ familyKey, serverVersion: 0, dirty: true, syncStatus: 'syncing' }),
+          // Signing out removes the family from this device; it stays on the server.
           disconnect: () =>
-            set({ familyKey: null, serverVersion: 0, syncStatus: 'local', lastSyncedAt: null }),
+            set({
+              familyKey: null,
+              family: emptyFamilyState(),
+              activeKidId: null,
+              serverVersion: 0,
+              dirty: false,
+              syncStatus: 'local',
+              lastSyncedAt: null,
+            }),
           reconcile: (family, serverVersion, stillDirty) =>
             set({
               family,

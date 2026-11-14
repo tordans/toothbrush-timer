@@ -157,7 +157,7 @@ is generated, so it needs no secret of its own.
 brush.ingsparks.de/               FTP root of the deploy user
   config/config.php               DB credentials, invite word digest, commit (not public)
   api/src/, api/migrations/       PHP code and SQL files (not public)
-  logs/api.log                    request log written by the API; logs/.htaccess denies all (not public)
+  logs/api.log                    server errors only (no request content, no IP); not public
   public/                         document root of https://brush.ingsparks.de
     .htaccess, index.html, assets/, api/index.php
 ```

@@ -4,15 +4,28 @@ import {
   createRouter,
   Navigate,
   Outlet,
+  useRouterState,
 } from '@tanstack/react-router'
 import { z } from 'zod'
+import { useFamilyKey, useSyncStatus } from './features/family/family-store'
 import { slotSchema } from './features/family/schema'
 import { BrushPage } from './pages/BrushPage'
 import { HomePage } from './pages/HomePage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ParentsPage } from './pages/ParentsPage'
+import { PrivacyPage } from './pages/PrivacyPage'
+import { StartScreen } from './pages/StartScreen'
 
-const rootRoute = createRootRoute({ component: Outlet })
+/** Without a (valid) family link every page shows the start screen, except the privacy page. */
+function RootGate() {
+  const familyKey = useFamilyKey()
+  const status = useSyncStatus()
+  const isPrivacy = useRouterState({ select: (s) => s.location.pathname === '/datenschutz' })
+  if ((!familyKey || status === 'unauthorized') && !isPrivacy) return <StartScreen />
+  return <Outlet />
+}
+
+const rootRoute = createRootRoute({ component: RootGate })
 
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -34,6 +47,12 @@ const parentsRoute = createRoute({
   component: ParentsPage,
 })
 
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/datenschutz',
+  component: PrivacyPage,
+})
+
 const overviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/uebersicht',
@@ -42,7 +61,13 @@ const overviewRoute = createRoute({
 })
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([homeRoute, brushRoute, parentsRoute, overviewRoute]),
+  routeTree: rootRoute.addChildren([
+    homeRoute,
+    brushRoute,
+    parentsRoute,
+    overviewRoute,
+    privacyRoute,
+  ]),
   defaultNotFoundComponent: () => <Navigate to="/" />,
   defaultErrorComponent: ErrorScreen,
 })

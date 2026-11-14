@@ -81,7 +81,26 @@ jobs:
           find deploy-out -type f ! -path '*/config/*' | sort
 
       # Pass 1: everything except index.html. Incremental sync, never a clean slate.
+      # all-inkl sometimes resets the FTPS data connection (ECONNRESET); each upload gets one retry.
       - name: Upload API and app files (FTPS)
+        id: upload_files
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          security: strict
+          local-dir: ./deploy-out/site/
+          server-dir: ./
+          state-name: .ftp-deploy-sync-state.json
+
+      # Pass 2: index.html only, which switches visitors to the new build.
+
+      - name: Upload API and app files (FTPS) (retry)
+        if: steps.upload_files.outcome == 'failure'
         uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -96,6 +115,22 @@ jobs:
 
       # Pass 2: index.html only, which switches visitors to the new build.
       - name: Upload index.html (FTPS)
+        id: upload_index
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          security: strict
+          local-dir: ./deploy-out/index/
+          server-dir: ./
+          state-name: .ftp-deploy-sync-state-index.json
+
+      - name: Upload index.html (FTPS) (retry)
+        if: steps.upload_index.outcome == 'failure'
         uses: SamKirkland/FTP-Deploy-Action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
