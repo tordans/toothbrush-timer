@@ -1,18 +1,11 @@
+import type { Animal } from '@/features/family/schema'
+
 /**
- * Three songs for brushing, played live with the Web Audio API (no audio files). Each one loops
- * a four-bar chord progression in C major at a walking tempo: lively enough to keep going, but
- * no fast drums and no sharp sounds. Each song has its own corner jingle, played with the same
+ * One song per animal, played live with the Web Audio API (no audio files). Each one loops a
+ * four-bar chord progression in C major at a walking tempo: lively enough to keep going, but no
+ * fast drums and no sharp sounds. Each song has its own corner jingle, played with the same
  * instrument and on its beat, so the jingle sounds like part of the song.
  */
-
-export const MUSIC_STYLES = ['spieluhr', 'marimba', 'lagerfeuer'] as const
-export type MusicStyle = (typeof MUSIC_STYLES)[number]
-
-export const MUSIC_STYLE_LABELS: Record<MusicStyle, string> = {
-  spieluhr: 'Spieluhr',
-  marimba: 'Marimba',
-  lagerfeuer: 'Lagerfeuer',
-}
 
 /** MIDI note number to Hz (69 = A4 = 440 Hz). */
 const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12)
@@ -23,6 +16,7 @@ const CHORDS = {
   Am: [45, 57, 60, 64],
   F: [41, 57, 60, 65],
   G: [43, 55, 59, 62],
+  Dm: [50, 57, 62, 65],
 } as const
 type Chord = keyof typeof CHORDS
 
@@ -109,15 +103,20 @@ function bass(v: Voices, midi: number, t: number, level: number, length = 0.5) {
 }
 
 let noise: AudioBuffer | null = null
-/** Very quiet shaker: a puff of high noise. */
-function shaker(v: Voices, t: number, level: number) {
+/** A tenth of a second of white noise, made once. */
+function noiseBuffer(v: Voices) {
   if (!noise || noise.sampleRate !== v.ctx.sampleRate) {
     noise = v.ctx.createBuffer(1, v.ctx.sampleRate * 0.1, v.ctx.sampleRate)
     const data = noise.getChannelData(0)
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
   }
+  return noise
+}
+
+/** Very quiet shaker: a puff of high noise. */
+function shaker(v: Voices, t: number, level: number) {
   const src = v.ctx.createBufferSource()
-  src.buffer = noise
+  src.buffer = noiseBuffer(v)
   const high = v.ctx.createBiquadFilter()
   high.type = 'highpass'
   high.frequency.value = 7000
@@ -225,6 +224,7 @@ const UKULELE: Record<Chord, number[]> = {
   F: [69, 65, 69, 72],
   Am: [69, 60, 64, 69],
   G: [67, 62, 67, 71],
+  Dm: [69, 62, 65, 69],
 }
 // Down, -, down, up, -, up, down, up
 const STRUM: ('down' | 'up' | null)[] = ['down', null, 'down', 'up', null, 'up', 'down', 'up']
@@ -283,8 +283,395 @@ const lagerfeuer: Song = {
   },
 }
 
-export const SONGS: Record<MusicStyle, Song> = {
-  spieluhr,
-  marimba: marimbaSong,
-  lagerfeuer,
+// Fuchs: tip-toe pizzicato. A staccato bass walks up and down the chord, small stabs sneak in
+// on the off-beats, and a sly tune pops up in the gaps. C – Am – Dm – G.
+/** Pizzicato: a plucked string that is bright for a blink and then stops, like a fox's step. */
+function pizzicato(v: Voices, midi: number, t: number, level: number, echo = false) {
+  const osc = v.ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.value = hz(midi)
+  const tone = v.ctx.createBiquadFilter()
+  tone.type = 'lowpass'
+  tone.frequency.setValueAtTime(2400, t)
+  tone.frequency.exponentialRampToValueAtTime(450, t + 0.2)
+  const env = envelope(v, t, level, 0.003, 0.3)
+  osc.connect(tone)
+  tone.connect(env)
+  env.connect(v.out)
+  if (echo) env.connect(v.echo)
+  osc.start(t)
+  osc.stop(t + 0.4)
+}
+
+const FOX_PROGRESSION: Chord[] = ['C', 'Am', 'Dm', 'G']
+/** Four quarter notes per bar: root, up, up, back down. */
+const FOX_WALK: Record<Chord, number[]> = {
+  C: [48, 52, 55, 52],
+  Am: [45, 48, 52, 48],
+  Dm: [50, 53, 57, 53],
+  G: [43, 47, 50, 47],
+  F: [41, 45, 48, 45],
+}
+const FOX_TUNE_A = [
+  [R, 64, 67, R, 72, R, 67, 64],
+  [R, 69, 72, R, 76, R, 72, 69],
+  [R, 65, 69, R, 74, R, 69, 65],
+  [R, 67, 71, R, 74, R, 71, 67],
+]
+const FOX_TUNE_B = [
+  [R, 72, R, 67, 64, R, 67, R],
+  [R, 76, R, 72, 69, R, 72, R],
+  [R, 74, R, 69, 65, R, 69, R],
+  [71, R, 74, R, 79, R, 74, 71],
+]
+
+const fox: Song = {
+  eighthsPerMinute: 192,
+  progression: FOX_PROGRESSION,
+  step(v, step, t) {
+    const bar = Math.floor(step / 8)
+    const beat = step % 8
+    const chord = CHORDS[chordAt(fox, step)]
+    const walk = FOX_WALK[chordAt(fox, step)]
+    // The walk: one short bass note per quarter, each on its tiptoe.
+    if (beat % 2 === 0) bass(v, walk[beat / 2] ?? chord[0], t, 0.16, 0.4)
+    // Stabs between the steps.
+    if (beat === 3) pizzicato(v, chord[2], t, 0.09)
+    if (beat === 7) pizzicato(v, chord[3], t, 0.09)
+    // The tune, A the first time through and B the second, and so on.
+    const tune = Math.floor(step / 32) % 2 === 0 ? FOX_TUNE_A : FOX_TUNE_B
+    const note = tune[bar % tune.length]?.[beat]
+    if (note != null) pizzicato(v, note, t, 0.13, true)
+  },
+  jingle(v, t, eighth) {
+    // Sneaking up the chord, then a pounce on the top.
+    ;[64, 67, 72].forEach((n, i) => pizzicato(v, n, t + i * eighth, 0.27))
+    pizzicato(v, 79, t + 3 * eighth, 0.36, true)
+    pizzicato(v, 67, t + 3 * eighth, 0.12)
+  },
+}
+
+// Igel: small, busy and cosy. A soft wooden tick-tack runs on every eighth, a dull little pluck
+// plays a bouncy tune, and a short bass hops underneath. C – F – C – G.
+/** Soft woodblock: a tiny knock of a quickly falling sine plus a click of noise. */
+function woodblock(v: Voices, t: number, level: number, freq: number) {
+  const osc = v.ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(freq * 1.2, t)
+  osc.frequency.exponentialRampToValueAtTime(freq, t + 0.02)
+  const knock = envelope(v, t, level, 0.002, 0.05)
+  osc.connect(knock)
+  knock.connect(v.out)
+  osc.start(t)
+  osc.stop(t + 0.08)
+  const src = v.ctx.createBufferSource()
+  src.buffer = noiseBuffer(v)
+  const band = v.ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.value = freq * 2
+  band.Q.value = 2
+  const click = envelope(v, t, level * 0.5, 0.002, 0.025)
+  src.connect(band)
+  band.connect(click)
+  click.connect(v.out)
+  src.start(t)
+  src.stop(t + 0.06)
+}
+
+/** Muted pluck: a hollow, round little tone that stops almost at once. */
+function mutedPluck(v: Voices, midi: number, t: number, level: number, echo = false) {
+  const f = hz(midi)
+  const body = envelope(v, t, level, 0.003, 0.22)
+  const hollow = envelope(v, t, level * 0.3, 0.002, 0.05)
+  const osc = v.ctx.createOscillator()
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(f * 1.03, t)
+  osc.frequency.exponentialRampToValueAtTime(f, t + 0.03)
+  osc.connect(body)
+  osc.start(t)
+  osc.stop(t + 0.3)
+  sine(v, f * 2, t, t + 0.08, hollow)
+  for (const env of [body, hollow]) {
+    env.connect(v.out)
+    if (echo) env.connect(v.echo)
+  }
+}
+
+const HEDGEHOG_PROGRESSION: Chord[] = ['C', 'F', 'C', 'G']
+const HEDGEHOG_TUNE_A = [
+  [72, R, 72, 76, 79, R, 76, R],
+  [77, R, 77, 81, 77, R, 72, R],
+  [72, R, 72, 76, 79, R, 84, R],
+  [83, R, 79, 74, 71, R, 67, R],
+]
+const HEDGEHOG_TUNE_B = [
+  [76, 76, R, 72, 76, R, 79, R],
+  [81, 81, R, 77, 81, R, 77, R],
+  [79, 79, R, 76, 79, R, 72, R],
+  [74, 74, R, 71, 74, 79, 74, R],
+]
+
+const hedgehog: Song = {
+  eighthsPerMinute: 200,
+  progression: HEDGEHOG_PROGRESSION,
+  step(v, step, t) {
+    const bar = Math.floor(step / 8)
+    const beat = step % 8
+    const chord = CHORDS[chordAt(hedgehog, step)]
+    // Tip (low), tap (high), tip, tap ...
+    woodblock(v, t, beat % 2 === 0 ? 0.085 : 0.06, beat % 2 === 0 ? 900 : 1300)
+    if (beat === 0) bass(v, chord[0], t, 0.12, 0.4)
+    if (beat === 3) bass(v, chord[0] + 12, t, 0.07, 0.15)
+    if (beat === 4) bass(v, chord[0] + 7, t, 0.1, 0.4)
+    const tune = Math.floor(step / 32) % 2 === 0 ? HEDGEHOG_TUNE_A : HEDGEHOG_TUNE_B
+    const note = tune[bar % tune.length]?.[beat]
+    if (note != null) mutedPluck(v, note, t, 0.16, true)
+  },
+  jingle(v, t, eighth) {
+    // Tick-tack, then four little plucks scurrying up.
+    woodblock(v, t, 0.08, 1300)
+    ;[72, 76, 79].forEach((n, i) => mutedPluck(v, n, t + i * eighth, 0.18))
+    mutedPluck(v, 84, t + 3 * eighth, 0.22, true)
+    woodblock(v, t + 3 * eighth, 0.07, 900)
+  },
+}
+
+// Hase: hopping and bright. Every quarter is a skip, long then short, on a chirpy toy piano; the
+// bass hops with a little upward boing. C – G – F – G.
+/** Toy piano: a hollow tone (odd partials) from two slightly detuned strings, short and bright. */
+function toyPiano(v: Voices, midi: number, t: number, level: number, echo = false) {
+  const f = hz(midi)
+  const body = envelope(v, t, level, 0.003, 0.32)
+  const chirp = envelope(v, t, level * 0.3, 0.002, 0.12)
+  sine(v, f, t, t + 0.4, body)
+  sine(v, f * 1.004, t, t + 0.4, body)
+  sine(v, f * 3, t, t + 0.15, chirp)
+  for (const env of [body, chirp]) {
+    env.connect(v.out)
+    if (echo) env.connect(v.echo)
+  }
+}
+
+/** A hop: a soft round bass note that bends up a little as it lands. */
+function hop(v: Voices, midi: number, t: number, level: number) {
+  const osc = v.ctx.createOscillator()
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(hz(midi) * 0.85, t)
+  osc.frequency.exponentialRampToValueAtTime(hz(midi), t + 0.05)
+  const env = envelope(v, t, level, 0.008, 0.2)
+  osc.connect(env)
+  env.connect(v.out)
+  osc.start(t)
+  osc.stop(t + 0.3)
+}
+
+const RABBIT_TEMPO = 196
+const RABBIT_PROGRESSION: Chord[] = ['C', 'G', 'F', 'G']
+// Eight notes per bar: long, short, long, short ...
+const RABBIT_TUNE_A = [
+  [72, 76, 79, 76, 84, 79, 76, 72],
+  [71, 74, 79, 74, 83, 79, 74, 71],
+  [72, 77, 81, 77, 84, 81, 77, 72],
+  [79, 74, 79, 83, 79, 74, 71, 74],
+]
+const RABBIT_TUNE_B = [
+  [79, 76, 72, 76, 79, 84, 79, 76],
+  [79, 74, 71, 74, 79, 83, 79, 74],
+  [77, 72, 77, 81, 84, 81, 77, 72],
+  [83, 79, 74, 79, 83, 79, 74, 71],
+]
+
+const rabbit: Song = {
+  eighthsPerMinute: RABBIT_TEMPO,
+  progression: RABBIT_PROGRESSION,
+  step(v, step, t) {
+    const bar = Math.floor(step / 8)
+    const beat = step % 8
+    const chord = CHORDS[chordAt(rabbit, step)]
+    const second = Math.floor(step / 32) % 2 === 1
+    if (beat % 2 === 0) {
+      // One skip per quarter: the short note comes after three quarters of the beat.
+      const tune = second ? RABBIT_TUNE_B : RABBIT_TUNE_A
+      const pair = tune[bar % tune.length]
+      const eighth = 60 / RABBIT_TEMPO
+      toyPiano(v, pair?.[beat] ?? chord[1], t, 0.12)
+      toyPiano(v, pair?.[beat + 1] ?? chord[2], t + 1.5 * eighth, 0.08, second)
+      // Hop, hop: root and fifth.
+      hop(v, beat % 4 === 0 ? chord[0] : chord[0] + 7, t, 0.12)
+    } else if (second && beat % 4 === 3) {
+      // The second time through, a soft chord note lands between the hops.
+      toyPiano(v, chord[2], t, 0.04)
+    }
+  },
+  jingle(v, t, eighth) {
+    // Skip, skip, skip, up: long-short, long-short, rising.
+    ;[0, 1.5, 2, 3.5].forEach((at, i) => {
+      toyPiano(v, [72, 76, 79, 84][i] ?? 72, t + at * eighth, i === 3 ? 0.17 : 0.12, true)
+    })
+    hop(v, 48, t, 0.09)
+  },
+}
+
+// Koala: sleepy and content, but gently swaying. A warm pad breathes slowly with each bar, the bass
+// rocks in a lazy 3 + 3 + 2, and a breathy flute sings a slow lullaby. F – C – Am – G.
+/** Warm pad: two slightly detuned triangles per note, a slow swell, and a gentle breathing sway. */
+function pad(v: Voices, midis: readonly number[], t: number, level: number, length: number) {
+  const sway = v.ctx.createGain()
+  sway.gain.value = 0.75
+  const lfo = v.ctx.createOscillator()
+  lfo.frequency.value = 0.32
+  const depth = v.ctx.createGain()
+  depth.gain.value = 0.25
+  lfo.connect(depth)
+  depth.connect(sway.gain)
+  const warm = v.ctx.createBiquadFilter()
+  warm.type = 'lowpass'
+  warm.frequency.value = 1100
+  const env = v.ctx.createGain()
+  env.gain.setValueAtTime(0.0001, t)
+  env.gain.linearRampToValueAtTime(level, t + 0.6)
+  env.gain.setValueAtTime(level, t + length)
+  env.gain.exponentialRampToValueAtTime(0.0001, t + length + 1.2)
+  for (const midi of midis) {
+    for (const detune of [-7, 7]) {
+      const osc = v.ctx.createOscillator()
+      osc.type = 'triangle'
+      osc.frequency.value = hz(midi)
+      osc.detune.value = detune
+      osc.connect(warm)
+      osc.start(t)
+      osc.stop(t + length + 1.3)
+    }
+  }
+  warm.connect(env)
+  env.connect(sway)
+  sway.connect(v.out)
+  lfo.start(t)
+  lfo.stop(t + length + 1.3)
+}
+
+/** Breathy flute: a soft sine with a little airy noise and a slow vibrato that arrives late. */
+function flute(v: Voices, midi: number, t: number, length: number, level: number) {
+  const f = hz(midi)
+  const env = v.ctx.createGain()
+  env.gain.setValueAtTime(0.0001, t)
+  env.gain.linearRampToValueAtTime(level, t + 0.09)
+  env.gain.setValueAtTime(level, t + length * 0.7)
+  env.gain.exponentialRampToValueAtTime(0.0001, t + length)
+  const osc = v.ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.value = f
+  const vibrato = v.ctx.createOscillator()
+  vibrato.frequency.value = 4.8
+  const depth = v.ctx.createGain()
+  depth.gain.setValueAtTime(0, t)
+  depth.gain.linearRampToValueAtTime(f * 0.004, t + length * 0.6)
+  vibrato.connect(depth)
+  depth.connect(osc.frequency)
+  osc.connect(env)
+  sine(v, f * 2, t, t + length + 0.05, env)
+  // The breath: noise around the second harmonic, only a whisper.
+  const air = v.ctx.createBufferSource()
+  air.buffer = noiseBuffer(v)
+  air.loop = true
+  const band = v.ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.value = f * 2
+  band.Q.value = 1.5
+  const whisper = v.ctx.createGain()
+  whisper.gain.value = 0.35
+  air.connect(band)
+  band.connect(whisper)
+  whisper.connect(env)
+  env.connect(v.out)
+  env.connect(v.echo)
+  for (const o of [osc, vibrato, air]) {
+    o.start(t)
+    o.stop(t + length + 0.05)
+  }
+}
+
+const KOALA_PROGRESSION: Chord[] = ['F', 'C', 'Am', 'G']
+/** A slow lullaby: [beat in the bar, note, length in eighths], three notes per bar. */
+const KOALA_TUNE_A: [number, number, number][][] = [
+  [
+    [0, 72, 3],
+    [3, 69, 3],
+    [6, 67, 2],
+  ],
+  [
+    [0, 64, 3],
+    [3, 67, 3],
+    [6, 72, 2],
+  ],
+  [
+    [0, 69, 3],
+    [3, 72, 3],
+    [6, 76, 2],
+  ],
+  [
+    [0, 74, 3],
+    [3, 71, 3],
+    [6, 67, 2],
+  ],
+]
+const KOALA_TUNE_B: [number, number, number][][] = [
+  [
+    [0, 77, 3],
+    [3, 72, 2],
+    [5, 69, 3],
+  ],
+  [
+    [0, 76, 3],
+    [3, 72, 3],
+    [6, 67, 2],
+  ],
+  [
+    [0, 72, 3],
+    [3, 69, 3],
+    [6, 64, 2],
+  ],
+  [
+    [0, 71, 4],
+    [4, 74, 2],
+    [6, 71, 2],
+  ],
+]
+
+const KOALA_TEMPO = 152
+const koala: Song = {
+  eighthsPerMinute: KOALA_TEMPO,
+  progression: KOALA_PROGRESSION,
+  step(v, step, t) {
+    const bar = Math.floor(step / 8)
+    const beat = step % 8
+    const eighth = 60 / KOALA_TEMPO
+    const chord = CHORDS[chordAt(koala, step)]
+    // One pad chord per bar, swelling slowly and overlapping the next.
+    if (beat === 0) pad(v, [chord[1], chord[2], chord[3]], t, 0.009, 8 * eighth)
+    // The sway: root, fifth, root, in a lazy 3 + 3 + 2.
+    if (beat === 0) bass(v, chord[0], t, 0.06, 1)
+    if (beat === 3) bass(v, chord[0] + 7, t, 0.04, 0.8)
+    if (beat === 6) bass(v, chord[0], t, 0.035, 0.6)
+    // The flute: the second time through, the lullaby turns a little.
+    const tune = Math.floor(step / 32) % 2 === 0 ? KOALA_TUNE_A : KOALA_TUNE_B
+    for (const [at, note, length] of tune[bar % tune.length] ?? []) {
+      if (at === beat) flute(v, note, t, length * eighth * 0.95, 0.045)
+    }
+  },
+  jingle(v, t, eighth) {
+    // A soft chord swells while the flute climbs, one note per eighth.
+    pad(v, [64, 67, 72], t, 0.008, 3 * eighth)
+    ;[72, 76, 79, 84].forEach((n, i) => flute(v, n, t + i * eighth, 2.4 * eighth, 0.05))
+  },
+}
+
+export const SONGS: Record<Animal, Song> = {
+  owl: spieluhr,
+  squirrel: marimbaSong,
+  bear: lagerfeuer,
+  fox,
+  hedgehog,
+  rabbit,
+  koala,
 }

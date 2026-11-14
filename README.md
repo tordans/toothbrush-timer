@@ -10,10 +10,10 @@ corners. UI in German. Home: <https://brush.ingsparks.de> (name: [docs/naming.md
   clearing. Earlier weeks can be looked at with the arrows.
 - **The timer:** two minutes in four corners of 30 seconds (top left, top right, bottom right,
   bottom left, seen like in a mirror). A ring shows the two minutes, the mouth shows the current
-  corner. A soft bell at each change, optional calm music generated in the browser, pause,
-  restart, stop. The screen stays on while brushing (Wake Lock, where supported). If the screen
+  corner. Optional music generated in the browser, one song per animal, with a short jingle
+  in the same song at each change; pause, restart, stop. The screen stays on while brushing (Wake Lock, where supported). If the screen
   turns off or the app goes to the background, the timer pauses.
-- **Several children,** each with an animal: fox, hedgehog, owl, rabbit, squirrel, bear.
+- **Several children,** each with an animal: fox, hedgehog, owl, rabbit, squirrel, bear, koala. Every animal has its own song.
 - **For parents** (hold the gear for a second): children, correcting the last two weeks, sound,
   connecting phones.
 

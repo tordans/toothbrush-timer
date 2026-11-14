@@ -65,7 +65,7 @@ export function AnimalPicker({
   onChange: (animal: AnimalId) => void
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" role="radiogroup" aria-label="Tier">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7" role="radiogroup" aria-label="Tier">
       {ANIMALS.map((animal) => (
         <button
           key={animal}

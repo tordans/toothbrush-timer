@@ -7,6 +7,7 @@ export const ANIMAL_NAMES: Record<AnimalId, string> = {
   rabbit: 'Hase',
   squirrel: 'Eichhörnchen',
   bear: 'Bär',
+  koala: 'Koala',
 }
 
 type Props = {
@@ -67,6 +68,7 @@ const EYE_Y: Record<AnimalId, number> = {
   rabbit: 46,
   squirrel: 42,
   bear: 40,
+  koala: 39,
 }
 
 function Smile({ y, w = 4 }: { y: number; w?: number }) {
@@ -208,6 +210,34 @@ const ANIMAL_ART: Record<AnimalId, React.ReactNode> = {
       <Smile y={55} w={3.4} />
       <ellipse cx="38" cy="93" rx="8" ry="4" fill="#6f462d" />
       <ellipse cx="62" cy="93" rx="8" ry="4" fill="#6f462d" />
+    </g>
+  ),
+  koala: (
+    <g>
+      <circle cx="22" cy="30" r="13" fill="#9aa0a6" />
+      <circle cx="78" cy="30" r="13" fill="#9aa0a6" />
+      {/* fluffy ear tufts */}
+      {[
+        [12, 24],
+        [15, 40],
+        [18, 18],
+        [88, 24],
+        [85, 40],
+        [82, 18],
+      ].map(([cx, cy]) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="5" fill="#9aa0a6" />
+      ))}
+      <circle cx="22" cy="30" r="7.5" fill="#f3eee6" />
+      <circle cx="78" cy="30" r="7.5" fill="#f3eee6" />
+      <ellipse cx="50" cy="76" rx="25" ry="19" fill="#9aa0a6" />
+      <ellipse cx="50" cy="80" rx="14" ry="12" fill="#f1ece3" />
+      <ellipse cx="50" cy="45" rx="26" ry="22" fill="#b4b9be" />
+      <ellipse cx="50" cy="59" rx="9" ry="5" fill="#dfe1e3" />
+      <ellipse cx="50" cy="50" rx="5.5" ry="6.5" fill="#463b37" />
+      <ellipse cx="48.4" cy="46.6" rx="1.6" ry="1.2" fill="#6b605b" />
+      <Smile y={59} w={3} />
+      <ellipse cx="38" cy="93" rx="8" ry="4" fill="#5f646a" />
+      <ellipse cx="62" cy="93" rx="8" ry="4" fill="#5f646a" />
     </g>
   ),
 }

@@ -1,13 +1,14 @@
 /**
  * Sound for the brushing timer, generated with the Web Audio API (no audio files):
- * - optional background music, one of three songs (see music.ts),
+ * - optional background music, the song of the child's animal (see music.ts),
  * - a short phrase at each section change, in the instrument of the chosen song,
  * - a little bell melody at the end.
  *
  * The AudioContext must be created from a tap (browser autoplay rules).
  */
 
-import { SONGS, type MusicStyle, type Voices } from './music'
+import type { Animal } from '@/features/family/schema'
+import { SONGS, type Voices } from './music'
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext }
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
@@ -20,11 +21,10 @@ class BrushingAudio {
   private musicBus: GainNode | null = null
   private echo: DelayNode | null = null
   private musicOn = false
-  private style: MusicStyle = 'spieluhr'
+  private animal: Animal = 'owl'
   private step = 0
   private nextStepAt = 0
   private scheduleTimer: ReturnType<typeof setTimeout> | undefined
-  private previewTimer: ReturnType<typeof setTimeout> | undefined
 
   /** Call from a tap handler. */
   unlock() {
@@ -98,9 +98,9 @@ class BrushingAudio {
     for (const [freq, at] of notes) this.bell(freq, t + at, 0.3, at === 1.0 ? 3.6 : 1.8)
   }
 
-  /** The song for this brushing; the corner jingle follows it even when the music is off. */
-  setStyle(style: MusicStyle) {
-    this.style = style
+  /** Whose song plays; the corner jingle follows it even when the music is off. */
+  setAnimal(animal: Animal) {
+    this.animal = animal
   }
 
   private voices(): Voices | null {
@@ -120,7 +120,7 @@ class BrushingAudio {
     this.step = 0
     // Echo on the dotted eighth, so it bounces in time.
     this.echo?.delayTime.setValueAtTime(
-      (60 / SONGS[this.style].eighthsPerMinute) * 1.5,
+      (60 / SONGS[this.animal].eighthsPerMinute) * 1.5,
       ctx.currentTime,
     )
     this.nextStepAt = ctx.currentTime + 0.1
@@ -134,7 +134,7 @@ class BrushingAudio {
   private schedule() {
     const v = this.voices()
     if (!v || !this.musicOn) return
-    const song = SONGS[this.style]
+    const song = SONGS[this.animal]
     const eighth = 60 / song.eighthsPerMinute
     while (this.nextStepAt < v.ctx.currentTime + 0.25) {
       song.step(v, this.step, this.nextStepAt)
@@ -148,7 +148,7 @@ class BrushingAudio {
   switchJingle() {
     const v = this.voices()
     if (!v) return
-    const song = SONGS[this.style]
+    const song = SONGS[this.animal]
     const eighth = 60 / song.eighthsPerMinute
     let t = v.ctx.currentTime + 0.02
     if (this.musicOn) {
@@ -170,27 +170,6 @@ class BrushingAudio {
     bus.gain.setValueAtTime(bus.gain.value, t)
     // Notes already planned fade out with the music.
     bus.gain.linearRampToValueAtTime(0, t + 0.8)
-  }
-
-  /** A few seconds of a song, for choosing one on the parents page. */
-  preview(style: MusicStyle) {
-    this.unlock()
-    this.stopMusic()
-    clearTimeout(this.previewTimer)
-    this.setStyle(style)
-    // Starts once the fade of a running preview has finished.
-    this.previewTimer = setTimeout(
-      () => {
-        this.startMusic()
-        this.previewTimer = setTimeout(() => this.stopMusic(), 7000)
-      },
-      this.ctx && this.musicBus && this.musicBus.gain.value > 0.01 ? 850 : 0,
-    )
-  }
-
-  stopPreview() {
-    clearTimeout(this.previewTimer)
-    this.stopMusic()
   }
 }
 
