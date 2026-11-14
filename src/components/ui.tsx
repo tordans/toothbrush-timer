@@ -19,7 +19,7 @@ export function Button({
     <button
       type={type}
       className={twMerge(
-        'inline-flex items-center justify-center gap-2 rounded-full font-extrabold transition-transform active:scale-95 disabled:opacity-50',
+        'inline-flex touch-manipulation items-center justify-center gap-2 rounded-full font-extrabold transition-transform active:scale-95 disabled:opacity-50',
         size === 'md' && 'px-5 py-2.5 text-base',
         size === 'lg' && 'px-7 py-3.5 text-xl',
         size === 'xl' && 'px-10 py-5 text-2xl sm:text-3xl',
@@ -74,7 +74,7 @@ export function AnimalPicker({
           aria-checked={value === animal}
           onClick={() => onChange(animal)}
           className={twMerge(
-            'flex flex-col items-center rounded-2xl border-4 p-1.5 text-sm font-bold transition-colors',
+            'flex flex-col items-center rounded-2xl border-4 p-1.5 text-sm font-bold transition active:scale-95',
             value === animal
               ? 'border-sun bg-white text-bark-900'
               : 'border-transparent bg-moss-50 text-bark-700',
@@ -139,9 +139,11 @@ export function HoldButton({
       onPointerCancel={cancel}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
+        if (e.repeat) return
         if (e.key === 'Enter' || e.key === ' ') onHold()
       }}
-      className={twMerge('relative', className)}
+      // touch-none: a finger that drifts a little must not turn the hold into a scroll
+      className={twMerge('relative touch-none select-none', className)}
     >
       {children}
       <svg
@@ -187,7 +189,7 @@ export function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3 text-left font-bold"
+      className="flex w-full items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3 text-left font-bold transition active:scale-[0.98]"
     >
       {label}
       <span
@@ -230,7 +232,7 @@ export function ToothbrushPicker({
           aria-checked={value === option.value}
           onClick={() => onChange(option.value)}
           className={twMerge(
-            'flex flex-col items-center rounded-2xl border-4 px-2 py-3 text-center font-bold transition-colors',
+            'flex flex-col items-center rounded-2xl border-4 px-2 py-3 text-center font-bold transition active:scale-95',
             value === option.value
               ? 'border-sun bg-white text-bark-900'
               : 'border-transparent bg-moss-50 text-bark-700',

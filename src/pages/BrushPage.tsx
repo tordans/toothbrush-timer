@@ -35,9 +35,11 @@ export function BrushPage() {
   const { kid: kidId, slot } = route.useSearch()
   const navigate = useNavigate()
   const family = useFamily()
-  const { recordBrushing, updateSettings } = useFamilyActions()
+  const { recordBrushing } = useFamilyActions()
   const kid = family.kids[kidId]
-  const { music, gong } = family.settings
+  const { gong } = family.settings
+  // The music button here only affects this brushing; the family setting stays as it is.
+  const [music, setMusic] = useState(family.settings.music)
   // Fixed when the page opens, so changing the setting on another phone does not jump the timer.
   const [totalSeconds] = useState(() => brushingSeconds(kid?.toothbrush))
 
@@ -116,7 +118,7 @@ export function BrushPage() {
     timer.restart()
   }
   const toggleMusic = () => {
-    updateSettings({ music: !music })
+    setMusic(!music)
     if (timer.phase !== 'running') return
     if (music) brushingAudio.stopMusic()
     else {
@@ -141,14 +143,14 @@ export function BrushPage() {
   return (
     <main
       className={twMerge(
-        'relative flex h-full w-full flex-col overflow-hidden',
+        'relative flex h-full w-full touch-manipulation flex-col overflow-hidden',
         evening
           ? 'bg-gradient-to-b from-night via-dusk to-[#6b5a8e] text-white'
           : 'bg-gradient-to-b from-[#bfe3f2] via-[#e7f1df] to-[#cfe3a8] text-bark-900',
       )}
     >
       {/* top controls */}
-      <div className="flex items-center justify-between p-3 sm:p-4">
+      <div className="flex items-center justify-between pb-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:pb-4">
         <button
           type="button"
           onClick={close}
@@ -173,7 +175,7 @@ export function BrushPage() {
       {timer.phase === 'done' ? (
         <Done animal={kid.animal} evening={evening} onHome={() => void navigate({ to: '/' })} />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 landscape:flex-row landscape:gap-10">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] landscape:flex-row landscape:gap-10">
           {/* dial with the animal */}
           <div className="relative h-[min(78vw,46vh)] w-[min(78vw,46vh)] shrink-0 landscape:h-[min(42vw,62vh)] landscape:w-[min(42vw,62vh)]">
             <MouthDial
@@ -242,15 +244,19 @@ export function BrushPage() {
                       Weiter
                     </Button>
                   )}
-                  <Button
-                    size="lg"
-                    variant="ghost"
-                    onClick={restart}
-                    aria-label="Neu starten"
-                    className={evening ? '' : 'bg-white/60 text-bark-800'}
-                  >
-                    <RestartIcon className="h-6 w-6" />
-                  </Button>
+                  {/* Only while paused, so a finger next to "Pause" cannot reset the timer. */}
+                  {timer.phase === 'paused' && (
+                    <Button
+                      size="lg"
+                      variant="ghost"
+                      onClick={restart}
+                      aria-label="Neu starten"
+                      className={evening ? '' : 'bg-white/60 text-bark-800'}
+                    >
+                      <RestartIcon className="h-6 w-6" />
+                      Neu
+                    </Button>
+                  )}
                 </div>
                 {timer.phase === 'paused' && (
                   <p className="text-lg font-bold opacity-80">
@@ -292,7 +298,7 @@ function Done({
   onHome: () => void
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-6 text-center landscape:flex-row landscape:gap-10 landscape:text-left">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-center landscape:flex-row landscape:gap-10 landscape:text-left">
       <div className="flex shrink-0 items-end">
         <svg
           viewBox="-90 -190 180 200"
@@ -355,9 +361,13 @@ function StopDialog({
             Als geputzt eintragen
           </Button>
         )}
-        <Button size="lg" variant="secondary" onClick={onDiscard}>
+        <button
+          type="button"
+          onClick={onDiscard}
+          className="mt-2 min-h-11 self-center px-3 font-bold text-bark-600 underline"
+        >
           Nicht eintragen
-        </Button>
+        </button>
       </Card>
     </div>
   )

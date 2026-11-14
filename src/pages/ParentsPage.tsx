@@ -23,7 +23,7 @@ import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/
 export function ParentsPage() {
   const navigate = useNavigate()
   return (
-    <main className="h-full overflow-y-auto bg-moss-800">
+    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 pb-16">
         <div className="flex items-center gap-3 text-cream">
           <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
@@ -212,7 +212,7 @@ function CalendarSection() {
               type="button"
               onClick={() => setKidId(k.id)}
               className={twMerge(
-                'rounded-full px-4 py-1.5 font-bold',
+                'min-h-11 rounded-full px-4 py-1.5 font-bold transition active:scale-95',
                 k.id === kid.id ? 'bg-moss-600 text-white' : 'bg-white',
               )}
             >
@@ -242,7 +242,7 @@ function CalendarSection() {
                     aria-label={`${slot === 'morning' ? 'Morgens' : 'Abends'} ${dayMonth(d)}`}
                     onClick={() => setBrushed(kid.id, key, slot, !done)}
                     className={twMerge(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-bold',
+                      'flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-sm font-bold transition active:scale-95',
                       done
                         ? slot === 'morning'
                           ? 'bg-sun text-bark-900'
@@ -351,7 +351,7 @@ function DevicesSection() {
         value={link}
         aria-label="Familien-Link"
         onFocus={(e) => e.currentTarget.select()}
-        className="rounded-xl border-2 border-bark-200 bg-white px-3 py-2 font-mono text-sm"
+        className="rounded-xl border-2 border-bark-200 bg-white px-3 py-2 font-mono text-base"
       />
       <div className="flex flex-wrap gap-2">
         <Button onClick={copy}>{copied ? 'Kopiert' : 'Link kopieren'}</Button>
@@ -379,7 +379,11 @@ function DevicesSection() {
           status === 'synced' &&
           ` Zuletzt abgeglichen um ${timeLabel(lastSyncedAt)}.`}
         {status !== 'synced' && status !== 'syncing' && (
-          <button type="button" className="ml-2 underline" onClick={() => void syncNow()}>
+          <button
+            type="button"
+            className="ml-1 inline-flex min-h-11 items-center px-2 underline"
+            onClick={() => void syncNow()}
+          >
             Erneut versuchen
           </button>
         )}

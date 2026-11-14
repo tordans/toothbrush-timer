@@ -38,7 +38,7 @@ export function StartScreen() {
   const linkKey = keyFromLink(link)
 
   return (
-    <main className="flex h-full overflow-y-auto bg-moss-800 p-4">
+    <main className="flex h-full touch-manipulation overflow-y-auto bg-moss-800 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))]">
       <Card className="m-auto flex w-full max-w-md animate-fadein flex-col gap-5">
         <div className="flex items-center gap-3">
           <Animal animal="fox" className="h-16 w-16 shrink-0" />
@@ -80,6 +80,8 @@ export function StartScreen() {
               aria-label="Einladungswort"
               autoComplete="off"
               autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-3 text-lg"
             />
             {error && <p className="text-sm font-bold text-[#8a2f25]">{error}</p>}
@@ -95,7 +97,7 @@ export function StartScreen() {
         )}
 
         <details className="rounded-2xl bg-moss-50 px-4 py-3" open={expired}>
-          <summary className="cursor-pointer font-bold">
+          <summary className="flex min-h-11 cursor-pointer items-center font-bold">
             Ihr nutzt die App schon auf einem anderen Handy?
           </summary>
           <div className="mt-3 flex flex-col gap-2">
@@ -108,7 +110,10 @@ export function StartScreen() {
               onChange={(e) => setLink(e.target.value)}
               placeholder="https://brush.ingsparks.de/#key=…"
               aria-label="Familien-Link"
-              className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 font-mono text-sm"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="rounded-2xl border-2 border-bark-200 bg-white px-4 py-2.5 font-mono text-base"
             />
             <Button
               variant="secondary"
@@ -122,7 +127,10 @@ export function StartScreen() {
           </div>
         </details>
 
-        <Link to="/datenschutz" className="self-start text-sm font-bold text-moss-700 underline">
+        <Link
+          to="/datenschutz"
+          className="inline-flex min-h-11 items-center self-start text-sm font-bold text-moss-700 underline"
+        >
           Datenschutz und Impressum
         </Link>
       </Card>

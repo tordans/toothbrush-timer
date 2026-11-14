@@ -34,7 +34,8 @@ type Props = {
   animal: AnimalId | null
   light: DayLight
   season: Season
-  portrait: boolean
+  /** Width / height of the area the forest fills. */
+  aspect: number
   /** Tapping the child's animal (to choose another one). */
   onAnimalTap?: () => void
 }
@@ -161,6 +162,50 @@ const PORTRAIT: Layout = {
   ],
 }
 
+/** Width / height below which the vertical (portrait) forest is used. */
+const PORTRAIT_BELOW = 1.3
+
+/**
+ * Fits a base layout to the screen, so no day is cut off at the edges (iPad, Split View):
+ * - landscape: narrower screens get a narrower forest, x positions are squeezed;
+ * - portrait: wider screens get a shorter forest, y positions below the horizon are squeezed.
+ * Very wide or very tall screens keep the base size and are cropped a little (sky, sides).
+ */
+function fitLayout(portrait: boolean, aspect: number): Layout {
+  if (portrait) {
+    const base = PORTRAIT
+    const h = Math.min(base.h, Math.max(900, base.w / aspect))
+    // Squeeze so the last day (with its sign below it) still fits above the bottom edge.
+    const lastStation = base.stations[base.stations.length - 1]?.y ?? base.h
+    const fy = Math.min(1, (h - 110 - base.horizon) / (lastStation - base.horizon))
+    const y = (v: number) => (v <= base.horizon ? v : base.horizon + (v - base.horizon) * fy)
+    const mapPt = <T extends Pt>(p: T): T => ({ ...p, y: y(p.y) })
+    return {
+      ...base,
+      h,
+      stations: base.stations.map(mapPt),
+      grow: base.grow.map(mapPt),
+      front: base.front.map(mapPt),
+      pathStart: mapPt(base.pathStart),
+      pathEnd: { ...base.pathEnd, y: h + 40 },
+    }
+  }
+  const base = LANDSCAPE
+  const w = Math.min(base.w, Math.max(1000, base.h * aspect))
+  const fx = w / base.w
+  const mapPt = <T extends Pt>(p: T): T => ({ ...p, x: p.x * fx })
+  return {
+    ...base,
+    w,
+    stations: base.stations.map(mapPt),
+    grow: base.grow.map(mapPt),
+    front: base.front.map(mapPt),
+    back: base.back.map(mapPt),
+    pathStart: mapPt(base.pathStart),
+    pathEnd: { ...base.pathEnd, x: w + 40 },
+  }
+}
+
 /** Catmull-Rom spline through the points, as one cubic Bézier segment per pair of points. */
 function smoothSegments(points: Pt[]): string[] {
   const segments: string[] = []
@@ -193,9 +238,10 @@ function useGrowingThings(spots: number, max = 8) {
   return grown
 }
 
-export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap }: Props) {
+export function ForestWeek({ days, animal, light, season, aspect, onAnimalTap }: Props) {
   const id = useId().replace(/:/g, '')
-  const L = portrait ? PORTRAIT : LANDSCAPE
+  const portrait = aspect < PORTRAIT_BELOW
+  const L = fitLayout(portrait, aspect)
   const segments = smoothSegments([L.pathStart, ...L.stations, L.pathEnd])
   const path = `M${L.pathStart.x} ${L.pathStart.y} ${segments.join(' ')}`
   // The part of the path up to today is darker: there you have already been.
@@ -208,14 +254,18 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
   const plants = useMeadowPlants(portrait ? 'portrait' : 'landscape')
   const { addPlant } = useMeadowActions()
   // Tapping the meadow grows a plant at the tapped point (in viewBox coordinates).
-  const onMeadowTap = (e: MouseEvent<SVGPathElement>) => {
-    const svg = e.currentTarget.ownerSVGElement
-    const ctm = svg?.getScreenCTM()
-    if (!svg || !ctm) return
+  // A tap anywhere on the ground (meadow, path, clearings, bushes) grows a plant there; not in the
+  // sky and not on the animal, which has its own action.
+  const onGroundTap = (e: MouseEvent<SVGSVGElement>) => {
+    if ((e.target as Element).closest('[data-animal]')) return
+    const svg = e.currentTarget
+    const ctm = svg.getScreenCTM()
+    if (!ctm) return
     const pt = svg.createSVGPoint()
     pt.x = e.clientX
     pt.y = e.clientY
     const p = pt.matrixTransform(ctm.inverse())
+    if (p.y < L.horizon + 30) return
     addPlant(portrait ? 'portrait' : 'landscape', p.x, p.y)
   }
   const dark = light === 'night' || light === 'evening'
@@ -229,8 +279,9 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
       viewBox={`0 0 ${L.w} ${L.h}`}
       preserveAspectRatio={portrait ? 'xMidYMid slice' : 'xMidYMax slice'}
       className="h-full w-full"
-      role="img"
+      role="group"
       aria-label="Die Woche im Wald"
+      onClick={onGroundTap}
     >
       <defs>
         {DAY_LIGHTS.map((l) => (
@@ -276,13 +327,8 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
       )}
 
       {/* meadow: light and dark layer, cross-faded */}
-      <path d={meadow} fill={`url(#ground-light${id})`} onClick={onMeadowTap} />
-      <path
-        d={meadow}
-        fill={`url(#ground-dark${id})`}
-        style={{ ...FADE, opacity: dark ? 1 : 0 }}
-        onClick={onMeadowTap}
-      />
+      <path d={meadow} fill={`url(#ground-light${id})`} />
+      <path d={meadow} fill={`url(#ground-dark${id})`} style={{ ...FADE, opacity: dark ? 1 : 0 }} />
 
       {/* the path: light where the days are still to come, darker where they are behind */}
       <path d={path} fill="none" stroke="#c9a676" strokeWidth="64" strokeLinecap="round" />
@@ -363,7 +409,15 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
         >
           <g
             className="animate-bob"
+            data-animal
             role={onAnimalTap ? 'button' : undefined}
+            tabIndex={onAnimalTap ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (onAnimalTap && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                onAnimalTap()
+              }
+            }}
             aria-label={onAnimalTap ? 'Anderes Tier aussuchen' : undefined}
             onClick={onAnimalTap}
             style={onAnimalTap ? { cursor: 'pointer' } : undefined}

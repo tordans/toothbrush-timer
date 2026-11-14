@@ -26,7 +26,7 @@ function ExternalLink({ href, children }: { href: string; children: ReactNode })
 export function PrivacyPage() {
   const navigate = useNavigate()
   return (
-    <main className="h-full overflow-y-auto bg-moss-800">
+    <main className="h-full select-text overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 pb-16">
         <Button variant="ghost" className="self-start" onClick={() => void navigate({ to: '/' })}>
           <ChevronLeft className="h-5 w-5" />
@@ -78,15 +78,15 @@ export function PrivacyPage() {
           </Section>
           <Section title="Löschen">
             <p>
-              Eine Familie löschen wir auf Anfrage per E-Mail an t@tobiasjordans.de, samt allen
-              Einträgen. Schickt dazu den Familien-Link mit. Im Browser entfernt „Auf diesem Gerät
-              abmelden“ die lokale Kopie.
+              Eine Familie löschen wir auf Anfrage per E-Mail an <Mail />, samt allen Einträgen.
+              Schickt dazu den Familien-Link mit. Im Browser entfernt „Auf diesem Gerät abmelden“
+              die lokale Kopie.
             </p>
           </Section>
           <Section title="Impressum">
             <p>
-              Tobias Jordans, Böhmische Straße 54, 12055 Berlin, E-Mail: t@tobiasjordans.de.
-              Privates, nicht kommerzielles Projekt.
+              Tobias Jordans, Böhmische Straße 54, 12055 Berlin, E-Mail: <Mail />. Privates, nicht
+              kommerzielles Projekt.
             </p>
           </Section>
           <p>
@@ -95,5 +95,13 @@ export function PrivacyPage() {
         </Card>
       </div>
     </main>
+  )
+}
+
+function Mail() {
+  return (
+    <a href="mailto:t@tobiasjordans.de" className="font-bold text-moss-700 underline">
+      t@tobiasjordans.de
+    </a>
   )
 }

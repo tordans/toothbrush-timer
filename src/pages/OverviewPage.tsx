@@ -66,8 +66,8 @@ export function OverviewPage() {
   const years = [...new Set(months.map((m) => m.getFullYear()))]
 
   return (
-    <main className="h-full overflow-y-auto bg-moss-800">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 bg-moss-800/95 p-3 backdrop-blur-sm">
+    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 bg-moss-800/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
         <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
           <ChevronLeft className="h-5 w-5" />
           Zurück in den Wald
@@ -82,7 +82,7 @@ export function OverviewPage() {
                 void navigate({ to: '/uebersicht', search: { kid: k.id }, replace: true })
               }}
               className={twMerge(
-                'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold',
+                'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold transition active:scale-95',
                 k.id === kid.id ? 'bg-cream text-bark-900' : 'bg-white/20 text-cream',
               )}
             >

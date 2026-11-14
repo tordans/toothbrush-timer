@@ -1,5 +1,5 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { twMerge } from 'tailwind-merge'
 import {
   CalendarIcon,
@@ -22,7 +22,7 @@ import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor } from '@/features/forest/scenery'
-import { usePortrait } from '@/hooks/use-media'
+import { useElementSize } from '@/hooks/use-element-size'
 import { useNow } from '@/hooks/use-now'
 import { daysAround, isoDay, slotForTime, weekdayShort, weekRangeLabel } from '@/lib/dates'
 
@@ -33,7 +33,8 @@ export function HomePage() {
   const activeKidId = useActiveKidId()
   const { setActiveKid, updateKid } = useFamilyActions()
   const now = useNow()
-  const portrait = usePortrait()
+  const forestRef = useRef<HTMLDivElement>(null)
+  const forestSize = useElementSize(forestRef)
   const navigate = useNavigate()
   const { week = 0 } = route.useSearch()
 
@@ -64,20 +65,21 @@ export function HomePage() {
   const openParents = () => void navigate({ to: '/eltern' })
 
   return (
-    <main className="relative flex h-full w-full flex-col overflow-hidden">
-      <div className="relative min-h-0 flex-1">
+    <main className="relative flex h-full w-full touch-manipulation flex-col overflow-hidden">
+      <div ref={forestRef} className="relative min-h-0 flex-1">
         <ForestWeek
           days={dayStatus}
           animal={kid?.animal ?? null}
           light={dayLightForSlot(slot, now)}
           season={seasonFor(days[3] ?? now)}
-          portrait={portrait}
+          aspect={forestSize.width / forestSize.height}
           onAnimalTap={kid ? () => setPickingAnimal(true) : undefined}
         />
 
         {/* top bar */}
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
-          <div className="flex flex-wrap gap-2">
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
+          {/* min-w-0: names shrink first, so the parents' gear always stays on screen */}
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
             {/* Tap another child to switch; tap the current child to see all months. */}
             {kids.map((k) => {
               const current = k.id === kid?.id
@@ -92,23 +94,24 @@ export function HomePage() {
                       : setActiveKid(k.id)
                   }
                   className={twMerge(
-                    'flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-lg font-extrabold shadow transition-colors',
+                    'flex min-w-0 max-w-full items-center gap-2 rounded-full py-1 pl-1 pr-3 text-lg font-extrabold shadow transition active:scale-95',
                     current ? 'bg-cream text-bark-900' : 'bg-white/40 text-bark-900/70',
                   )}
                 >
                   <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
-                  {k.name}
-                  {current && <CalendarIcon className="h-5 w-5 text-bark-600" />}
+                  <span className="truncate">{k.name}</span>
+                  {current && <CalendarIcon className="h-5 w-5 shrink-0 text-bark-600" />}
                 </button>
               )
             })}
           </div>
-          <div className="flex items-center gap-2">
+          {/* on narrow screens the gear sits above the week switch */}
+          <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
             <div className="flex items-center rounded-full bg-cream/90 shadow">
               <button
                 type="button"
                 aria-label="Woche davor"
-                className="p-2"
+                className="p-2.5 transition active:scale-90"
                 onClick={() =>
                   void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
                 }
@@ -121,7 +124,7 @@ export function HomePage() {
               <button
                 type="button"
                 aria-label="Woche danach"
-                className="p-2 disabled:opacity-30"
+                className="p-2.5 transition active:scale-90 disabled:opacity-30"
                 disabled={week === 0}
                 onClick={() =>
                   void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
@@ -143,7 +146,7 @@ export function HomePage() {
 
       {/* bottom: start brushing (below the forest, so it never hides a day) */}
       {kid ? (
-        <div className="flex shrink-0 flex-col items-center justify-center gap-x-5 gap-y-2 bg-moss-800 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 landscape:flex-row landscape:pb-3">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-x-5 gap-y-2 bg-moss-800 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 landscape:flex-row landscape:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex rounded-full bg-cream p-1 shadow-lg" role="radiogroup">
             <SlotButton slot="morning" active={slot === 'morning'} onClick={setChosenSlot} />
             <SlotButton slot="evening" active={slot === 'evening'} onClick={setChosenSlot} />
@@ -196,7 +199,7 @@ function SlotButton({
       aria-checked={active}
       onClick={() => onClick(slot)}
       className={twMerge(
-        'flex items-center gap-2 rounded-full px-5 py-2 text-lg font-extrabold transition-colors',
+        'flex min-h-11 items-center gap-2 rounded-full px-5 py-2 text-lg font-extrabold transition active:scale-95',
         active
           ? slot === 'morning'
             ? 'bg-sun text-bark-900'
