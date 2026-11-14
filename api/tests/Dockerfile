@@ -1,5 +1,5 @@
-# Local copy of the all-inkl setup: Apache + PHP 8.4, document root /srv/brush/public.
-FROM php:8.4-apache
+# Local copy of the all-inkl setup: Apache + PHP 8.5, document root /srv/brush/public.
+FROM php:8.5-apache
 
 RUN docker-php-ext-install pdo_mysql \
  && a2enmod rewrite headers deflate \

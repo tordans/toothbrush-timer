@@ -91,7 +91,7 @@ the month, one PR per ecosystem) is therefore not checked by GitHub: check out a
 and push or run `bun run check-pre-push` before merging. Deployment: [docs/central-storage.md](docs/central-storage.md).
 
 Stack: Vite 8, React 19 with React Compiler, TanStack Router (search params validated with Zod 4),
-Zustand (persisted), date-fns, Tailwind CSS 3, Web Audio API. Server: plain PHP 8.4, no framework.
+Zustand (persisted), date-fns, Tailwind CSS 3, Web Audio API. Server: plain PHP 8.5, no framework.
 
 ## License
 

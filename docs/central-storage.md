@@ -109,7 +109,7 @@ These cannot be done from the repository. Do them in this order.
    **`brush.ingsparks.de/public/`**, so that `config/`, `api/` and `logs/` next to it are not
    reachable from the web. Create `public/` first (via FTP or the KAS file manager) if KAS insists
    on an existing folder.
-2. **PHP.** For the subdomain choose PHP 8.4 or newer. Needed extensions: `pdo_mysql`, `mbstring`,
+2. **PHP.** For the subdomain choose PHP 8.5 (as on the server). Needed extensions: `pdo_mysql`, `mbstring`,
    `openssl`.
 3. **TLS.** Enable Let's Encrypt for `brush.ingsparks.de` and wait until
    `https://brush.ingsparks.de/` answers (an error page is fine before the first deploy). The
@@ -191,7 +191,7 @@ If an upload was interrupted, the health check shows the old commit; run the wor
 Needs Docker. No PHP on the host.
 
 ```sh
-bun run api-up      # PHP 8.4 + Apache and MariaDB 10.11 on http://localhost:8088
+bun run api-up      # PHP 8.5 + Apache and MariaDB 10.11 on http://localhost:8088
 bun run api-test    # tests against that stack
 bun run api-down    # stop (data stays in Docker volumes; add -v to the compose command to wipe)
 ```
