@@ -3,8 +3,8 @@
 // - /assets/ (hashed build files): cache first.
 // - /api/: never cached, always the network (the app stores its data itself).
 
-const CACHE = 'brushing-sparks-v1'
-const SHELL = ['/', '/favicon.svg', '/manifest.webmanifest', '/icon-192.png']
+const CACHE = 'brushing-sparks-v2'
+const SHELL = ['/', '/home-screen.js', '/favicon.svg', '/manifest.webmanifest', '/icon-192.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)))

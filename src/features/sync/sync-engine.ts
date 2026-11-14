@@ -99,7 +99,11 @@ function takeKeyFromLocation() {
   const match = /(?:^#|&)key=([^&]+)/.exec(window.location.hash)
   if (!match?.[1]) return
   const key = decodeURIComponent(match[1])
-  if (familyStore.getState().familyKey !== key) familyStore.getState().actions.connect(key)
+  const current = familyStore.getState().familyKey
+  // A Home Screen icon starts with the key from the day it was added (see public/home-screen.js).
+  // Once the app there has a key, that old one must not replace a newer family link.
+  const homeScreenApp = window.matchMedia('(display-mode: standalone)').matches
+  if (current !== key && !(homeScreenApp && current)) familyStore.getState().actions.connect(key)
   history.replaceState(null, '', window.location.pathname + window.location.search)
 }
 

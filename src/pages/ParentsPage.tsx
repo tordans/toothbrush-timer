@@ -346,6 +346,10 @@ function DevicesSection() {
         Kinder und dieselbe Woche. Wer den Link hat, kann alles sehen und ändern, also nur in der
         Familie weitergeben und am besten im Passwortmanager speichern.
       </p>
+      <p className="text-sm text-bark-700">
+        Auf iPhone und iPad: Den Link in Safari öffnen, dann „Teilen“ → „Zum Home-Bildschirm“. Die
+        App auf dem Home-Bildschirm ist dann gleich mit eurer Familie verbunden.
+      </p>
       <input
         readOnly
         value={link}
