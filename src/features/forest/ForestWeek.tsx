@@ -1,6 +1,7 @@
-import { useEffect, useId, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { Animal as AnimalId } from '@/features/family/schema'
 import { Animal } from './Animal'
+import { useMeadowActions, useMeadowPlants } from './meadow-store'
 import {
   Bush,
   EveningLantern,
@@ -204,6 +205,19 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
       ? `M${L.pathStart.x} ${L.pathStart.y} ${segments.slice(0, lastPast + 1).join(' ')}`
       : ''
   const grown = useGrowingThings(L.grow.length)
+  const plants = useMeadowPlants(portrait ? 'portrait' : 'landscape')
+  const { addPlant } = useMeadowActions()
+  // Tapping the meadow grows a plant at the tapped point (in viewBox coordinates).
+  const onMeadowTap = (e: MouseEvent<SVGPathElement>) => {
+    const svg = e.currentTarget.ownerSVGElement
+    const ctm = svg?.getScreenCTM()
+    if (!svg || !ctm) return
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const p = pt.matrixTransform(ctm.inverse())
+    addPlant(portrait ? 'portrait' : 'landscape', p.x, p.y)
+  }
   const dark = light === 'night' || light === 'evening'
   const ground = GROUND[season]
   const meadow = `M0 ${L.horizon + 30} Q${L.w * 0.5} ${L.horizon - 10} ${L.w} ${L.horizon + 30} V${L.h} H0 Z`
@@ -262,8 +276,13 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
       )}
 
       {/* meadow: light and dark layer, cross-faded */}
-      <path d={meadow} fill={`url(#ground-light${id})`} />
-      <path d={meadow} fill={`url(#ground-dark${id})`} style={{ ...FADE, opacity: dark ? 1 : 0 }} />
+      <path d={meadow} fill={`url(#ground-light${id})`} onClick={onMeadowTap} />
+      <path
+        d={meadow}
+        fill={`url(#ground-dark${id})`}
+        style={{ ...FADE, opacity: dark ? 1 : 0 }}
+        onClick={onMeadowTap}
+      />
 
       {/* the path: light where the days are still to come, darker where they are behind */}
       <path d={path} fill="none" stroke="#c9a676" strokeWidth="64" strokeLinecap="round" />
@@ -303,6 +322,14 @@ export function ForestWeek({ days, animal, light, season, portrait, onAnimalTap 
             return <Grass key={i} x={f.x} y={f.y} s={f.s} />
         }
       })}
+
+      {plants.map((plant) => (
+        <g key={plant.id} className="animate-grow" style={GROW}>
+          {plant.kind === 'grass' && <Grass x={plant.x} y={plant.y} s={1.3} />}
+          {plant.kind === 'flower' && <MorningFlower x={plant.x} y={plant.y} open s={0.7} />}
+          {plant.kind === 'mushroom' && <Mushroom x={plant.x} y={plant.y} s={1} />}
+        </g>
+      ))}
 
       {grown.map((spot, n) => {
         const p = L.grow[spot]
