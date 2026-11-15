@@ -1,6 +1,7 @@
 import { familyStore } from '@/features/family/family-store'
 import { mergeFamilyStates, sameFamilyState } from '@/features/family/merge'
 import { parseFamilyState, type FamilyState } from '@/features/family/schema'
+import { photoStore } from '@/features/photos/photo-store'
 import { fetchRemoteState, pushRemoteState, type RemoteState } from './api'
 
 const PUSH_DELAY_MS = 800
@@ -84,6 +85,11 @@ export async function syncNow(): Promise<void> {
       again = false
       await syncOnce()
     } while (again)
+    // The photo list changes rarely (parents upload on one phone); load it along with the state.
+    const key = familyStore.getState().familyKey
+    if (key && familyStore.getState().syncStatus === 'synced') {
+      void photoStore.getState().actions.refresh(key)
+    }
   } finally {
     running = false
   }

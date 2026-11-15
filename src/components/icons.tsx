@@ -95,3 +95,12 @@ export const CalendarIcon = ({ className }: P) => (
     <path d="M3.5 10h17M8 3v4M16 3v4" />
   </svg>
 )
+
+/** A picture frame with a hill and a sun: the reward photo of the week. */
+export const FrameIcon = ({ className }: P) => (
+  <svg {...base} className={className}>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <circle cx="9" cy="10" r="1.8" fill="currentColor" stroke="none" />
+    <path d="M3.5 17.5 9.5 13l4 3 3-2.5 4 3.5" />
+  </svg>
+)

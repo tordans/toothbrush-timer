@@ -24,10 +24,11 @@ Kontakt für Fragen, Auskunft und das Löschen einer Familie: dieselbe Adresse.
 
 ## Im Browser
 
-| Was                                                                                                        | Wo                                               | Hinweis                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Kopie der Familiendaten (Kinder, Putz-Einträge, Ton-Einstellungen, siehe unten) und der Familien-Schlüssel | `localStorage`, Schlüssel `brushing-sparks`      | Damit die App ohne Netz funktioniert und später abgleicht; der Schlüssel öffnet die Familie auf dem Server. |
-| App-Dateien (HTML, JavaScript, Schrift, Bilder)                                                            | Cache des Service Workers (`brushing-sparks-v1`) | Nur Programmdateien, keine Daten. Damit die App bei schwachem WLAN startet.                                 |
+| Was                                                                                                        | Wo                                                 | Hinweis                                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kopie der Familiendaten (Kinder, Putz-Einträge, Ton-Einstellungen, siehe unten) und der Familien-Schlüssel | `localStorage`, Schlüssel `brushing-sparks`        | Damit die App ohne Netz funktioniert und später abgleicht; der Schlüssel öffnet die Familie auf dem Server.                                                                                          |
+| Liste der Belohnungsfotos (Kennung, Größe, Zeitpunkt; keine Bilder)                                        | `localStorage`, Schlüssel `brushing-sparks-photos` | Damit die App weiß, welche Fotos es gibt, auch ohne Netz. Die Bilder selbst lädt die App bei Bedarf vom Server; der Browser darf sie im HTTP-Cache behalten (`private`), bis der Cache geleert wird. |
+| App-Dateien (HTML, JavaScript, Schrift, Bilder)                                                            | Cache des Service Workers (`brushing-sparks-v1`)   | Nur Programmdateien, keine Daten. Damit die App bei schwachem WLAN startet.                                                                                                                          |
 
 Wer Zugriff auf das entsperrte Gerät bzw. Browserprofil hat, sieht die Daten und kann die Familie mit
 dem gespeicherten Schlüssel öffnen. Der Schlüssel steht nur kurz in der Adresszeile; die App entfernt
@@ -42,6 +43,7 @@ mit PHP und einer MariaDB-Datenbank.
 | Was                                                                                                                                                                                             | Form                                                                                                                                                   | Lesbar für                                                                                                                   |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | Die Familie: Namen der Kinder (frei wählbar), gewähltes Tier, Putz-Einträge (Tag, morgens oder abends, Uhrzeit, Dauer in Sekunden, ob vom Timer oder von Eltern eingetragen), Ton-Einstellungen | **Klartext** (JSON) in der Datenbank. Keine Ende-zu-Ende-Verschlüsselung                                                                               | wer den Familien-Link hat; der Betreiber; der Hoster                                                                         |
+| Belohnungsfotos: verkleinerte Kopien (längste Seite höchstens 2048 Pixel, JPEG oder WebP) und je ein Eintrag mit Größe, Maßen und Zeitpunkt                                                     | Dateien auf dem Webspace, **unverschlüsselt**; die Metadaten in der Datenbank. Keine Originale, keine Auswertung, keine Weitergabe an Dritte           | wer den Familien-Link hat (Abruf nur mit Schlüssel); der Betreiber; der Hoster                                               |
 | Familien-Schlüssel                                                                                                                                                                              | nur als SHA-256-Fingerabdruck; der Schlüssel selbst geht nur einmal beim Anlegen oder Erneuern an das Gerät                                            | – (nicht umkehrbar)                                                                                                          |
 | Einladungswort                                                                                                                                                                                  | nur als SHA-256-Fingerabdruck in der Konfiguration                                                                                                     | –                                                                                                                            |
 | Fehlversuche mit dem Einladungswort                                                                                                                                                             | IP-Adresse gemischt mit einem täglich wechselnden Salz und gehasht (keine Klar-IP), mit Zeitpunkt; Einträge älter als etwa eine Stunde werden gelöscht | Betreiber, Hoster                                                                                                            |
@@ -65,6 +67,10 @@ Datenbank enthält keine E-Mail-Adressen und keine Klar-IP-Adressen.
   Weil nur Fingerabdrücke gespeichert sind, kann niemand einen verlorenen Link wieder anzeigen. Auf
   einem angemeldeten Gerät steht er unter „Weitere Handys“; speichert ihn am besten in einem
   Passwortmanager.
+- **Belohnungsfotos:** Die Fotos lassen sich nur mit dem Familien-Link abrufen, nicht über eine
+  öffentliche Adresse. Der Betreiber und der Hoster könnten sie technisch einsehen; sie werden nicht
+  ausgewertet und nicht an Dritte weitergegeben. Hochgeladen wird nur die im Browser verkleinerte
+  Kopie, das Original verlässt das Gerät nicht.
 - **Weitergabe:** Wer den Link weitergibt, gibt den Zugriff weiter. Nur in der Familie teilen.
 - **Einladungswort:** Es schützt davor, dass Fremde Familien auf dem Server anlegen. Es öffnet keine
   bestehende Familie.
@@ -72,8 +78,11 @@ Datenbank enthält keine E-Mail-Adressen und keine Klar-IP-Adressen.
 ## Löschen
 
 - **Eine Familie:** Auf Anfrage an den Betreiber (E-Mail oben) löscht dieser die Familie samt allen
-  Einträgen und dem Schlüssel aus der Datenbank. Dazu den Familien-Link mitschicken. Eine
+  Einträgen, Fotos und dem Schlüssel. Dazu den Familien-Link mitschicken. Eine
   Löschfunktion in der App gibt es noch nicht.
+- **Ein Foto:** „Für Eltern“ → „Belohnungsfotos“ → „Löschen“ entfernt die Datei und den Eintrag
+  sofort vom Server. War das Foto schon in einer Woche dran, sehen die Kinder es dort nicht mehr.
+  Beim Löschen der Familie (siehe oben) werden alle Fotos mit gelöscht.
 - **Ein Kind:** „Für Eltern“ → Kind → „Ändern“ → „Entfernen“ markiert das Kind als gelöscht und
   blendet es mit seinen Einträgen aus, damit auch die anderen Handys es übernehmen. Die Daten bleiben
   in der Familie, bis die Familie gelöscht wird.

@@ -26,7 +26,8 @@ another device saved in between, the server answers `409` with the current state
 merge and try again. Two writers can never both win: the check runs in a database transaction with
 a row lock.
 
-The table `invite_attempts` holds failed invite attempts for one hour: a hash of the IP address
+The table `photos` holds the metadata of the reward photos (see "Reward photos"). The table
+`invite_attempts` holds failed invite attempts for one hour: a hash of the IP address
 (with a salt that changes every day, so the address itself is never stored) and a time.
 
 ## Endpoints
@@ -50,6 +51,8 @@ Everywhere: `405` wrong method (with an `Allow` header), `404` unknown route, `5
 (`{ "error": "internal" }`, details in the log). Timestamps are UTC with milliseconds, for example
 `2026-11-05T21:40:00.123Z`.
 
+Photos have their own endpoints, described in "Reward photos" below.
+
 Errors for `POST /api/families`: `403 invalid_invite` (wrong word), `400` body is not a JSON
 object, `413` body larger than 4 KiB, `429 too_many_attempts` (10 wrong words from one IP address
 within an hour; even the right word is refused until the hour is over), `429 too_many_new_families`
@@ -63,6 +66,73 @@ Requests without any key are not counted.
 The API creates and updates its database tables itself, before the first request that needs the
 database (see "Database changes"). `GET /api/health` never touches the database, so it also answers
 while the database is down.
+
+## Reward photos
+
+Parents upload photos (the app has already resized them to at most 2048 pixels on the long side, as
+JPEG or WebP) and the children's app shows them later. A photo can only be read with the family key,
+never from a public URL.
+
+One row per photo in the table `photos`:
+
+| Column       | What it is                                                                           |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `id`         | 22 characters of base64url (16 random bytes). Also the file name.                    |
+| `family_id`  | The family it belongs to. Indexed; deleting the family deletes the rows (`CASCADE`). |
+| `type`       | `image/jpeg` or `image/webp`.                                                        |
+| `width`      | Pixels, 1 to 4096.                                                                   |
+| `height`     | Pixels, 1 to 4096.                                                                   |
+| `bytes`      | Size of the file.                                                                    |
+| `created_at` | When it was uploaded (UTC, milliseconds).                                            |
+
+The files are not in the database. They live **outside the document root**, next to `config/` and
+`logs/`:
+
+```
+<root>/data/.htaccess                      Require all denied (written when data/ is first created)
+<root>/data/photos/<family_id>/<id>.jpg    or .webp
+```
+
+The folders are created on demand. A file is written to a temporary name in its folder and then
+renamed, so a half-written photo never exists under its real name. The row is inserted only after the
+file is in place; if the insert fails, the file is removed again. Delete removes the row first, then
+the file. A photo never changes, so there is no update.
+
+A renewed family key keeps the photos: the family id stays the same.
+
+All requests need `Authorization: Bearer <family key>`, and throttling, `401` and `429` work exactly
+as for `/api/state`.
+
+| Request                   | Answer                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GET /api/photos`         | `200 { "photos": [ { id, width, height, bytes, type, created_at } ] }`, oldest first. `no-store`.   |
+| `POST /api/photos`        | Body: the raw image bytes, `Content-Type: image/jpeg` or `image/webp`. `201` with the photo object. |
+| `GET /api/photos/{id}`    | `200` with the image bytes (see below).                                                             |
+| `DELETE /api/photos/{id}` | `204` without a body.                                                                               |
+
+`GET /api/photos/{id}` answers with the stored `Content-Type` and `Content-Length`, `Cache-Control:
+private, max-age=31536000, immutable` (a photo never changes), `X-Content-Type-Options: nosniff` and
+`Content-Disposition: inline`. The browser can therefore keep a photo for good, but a shared cache
+may not.
+
+Errors: `401` wrong or missing key, `429` too many wrong keys, `405` wrong method (with `Allow`),
+`404 not_found` for an id that is unknown, malformed (not 22 base64url characters) or belongs to
+another family (the answer never shows that another family's id exists), `415 unsupported_type`
+(wrong `Content-Type`, or the bytes are not really that image, or a side is not 1 to 4096 pixels),
+`413 too_large` (more than 3 MiB), `409 too_many_photos` (the family already has 300).
+
+How an upload is checked: the `Content-Type` must be `image/jpeg` or `image/webp`; the body is at
+most 3 MiB; the first bytes must be the magic bytes of that type; `getimagesizefromstring` must
+read it and report the same type; width and height must be 1 to 4096. The limit of 300 photos is
+checked in a transaction with a lock on the family row. The limits of the other routes (4 KiB for
+`POST /api/families`, 256 KiB for the state) are not changed; a photo body is read raw from
+`php://input`, so `post_max_size` and `upload_max_filesize` do not apply, only `memory_limit` (the
+body is held in memory: 3 MiB against 128 MiB by default).
+
+The server owner can see the photos in the FTP folder `data/photos/`. From the web they cannot be
+read without the family key: `data/` is outside the document root and also has its own
+`.htaccess`. The deploy never creates, overwrites or deletes `data/` (the FTP sync only deletes
+files it uploaded itself).
 
 ## Invite word, family link and key
 
@@ -91,8 +161,10 @@ Devices that still use the old link get `401` and have to be opened with the new
 There is no delete endpoint. In phpMyAdmin (KAS, Tools, Databases), open the database and the
 table `families`. Find the family by `created_at`, `updated_at` and the size of its data, then
 delete the row (or run `DELETE FROM families WHERE id = <id>;`). Its key is invalid from then on and
-the place is free again for the limit of 100 families. The data cannot be restored; make an export of
-the row first if in doubt. The same table shows how many families exist.
+the place is free again for the limit of 100 families. The rows of its photos go with it, but the
+photo files do not: also delete the folder `data/photos/<id>/` by FTP (`<id>` is the number in the
+column `id`). The data cannot be restored; make an export of the row first if in doubt. The same
+table shows how many families exist.
 
 ### Change the invite word
 
@@ -158,6 +230,7 @@ brush.ingsparks.de/               FTP root of the deploy user
   config/config.php               DB credentials, invite word digest, commit (not public)
   api/src/, api/migrations/       PHP code and SQL files (not public)
   logs/api.log                    server errors only (no request content, no IP); not public
+  data/photos/<family id>/        reward photos, created by the API; not public, not touched by the deploy
   public/                         document root of https://brush.ingsparks.de
     .htaccess, index.html, assets/, api/index.php
 ```
@@ -191,7 +264,7 @@ If an upload was interrupted, the health check shows the old commit; run the wor
 Needs Docker. No PHP on the host.
 
 ```sh
-bun run api-up      # PHP 8.5 + Apache and MariaDB 10.11 on http://localhost:8088
+bun run api-up      # (re)builds the image; PHP 8.5 + Apache and MariaDB 10.11 on http://localhost:8088
 bun run api-test    # tests against that stack
 bun run api-down    # stop (data stays in Docker volumes; add -v to the compose command to wipe)
 ```

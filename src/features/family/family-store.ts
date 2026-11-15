@@ -42,6 +42,11 @@ type FamilyStore = {
     recordBrushing: (input: { kidId: string; date: string; slot: Slot; seconds: number }) => void
     setBrushed: (kidId: string, date: string, slot: Slot, brushed: boolean) => void
     updateSettings: (patch: Partial<Omit<Settings, 'updatedAt'>>) => void
+    /**
+     * Uncovers fields of the week's photo for one child. The first call of a week also fixes
+     * which photo the week shows. Does nothing if the week already has another photo.
+     */
+    revealCells: (week: string, photoId: string, kidId: string, cells: number[]) => void
     connect: (familyKey: string) => void
     disconnect: () => void
     /** Used by the sync engine only. */
@@ -134,6 +139,21 @@ const useFamilyStore = create<FamilyStore>()(
               const brushings = { ...f.brushings }
               for (const b of existing) brushings[b.id] = { ...b, deleted: true, updatedAt: now }
               return { ...f, brushings }
+            }),
+          revealCells: (week, photoId, kidId, cells) =>
+            change((f) => {
+              const current = f.weekPhotos[week]
+              if (current && current.photoId !== photoId) return f
+              const now = nowIso()
+              const revealed = { ...current?.cells }
+              for (const cell of cells) revealed[String(cell)] ??= { kidId, at: now }
+              return {
+                ...f,
+                weekPhotos: {
+                  ...f.weekPhotos,
+                  [week]: { photoId, cells: revealed, updatedAt: now },
+                },
+              }
             }),
           updateSettings: (patch) =>
             change((f) => ({ ...f, settings: { ...f.settings, ...patch, updatedAt: nowIso() } })),

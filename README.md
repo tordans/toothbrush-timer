@@ -13,15 +13,20 @@ corners. UI in German. Home: <https://brush.ingsparks.de> (name: [docs/naming.md
   corner. Optional music generated in the browser, one song per animal, with a short jingle
   in the same song at each change; pause, restart, stop. The screen stays on while brushing (Wake Lock, where supported). If the screen
   turns off or the app goes to the background, the timer pauses.
+- **Reward photos (optional).** Parents upload as many photos as they like (resized in the browser,
+  the original never leaves the device). Each week one photo is shared by all children; after every
+  brushing a child uncovers four of its 56 fields. One photo is used up per week. Without uploaded
+  photos the feature does not exist.
 - **Several children,** each with an animal: fox, hedgehog, owl, rabbit, squirrel, bear, koala. Every animal has its own song.
 - **For parents** (hold the gear for a second): children, correcting the last two weeks, sound,
-  connecting phones.
+  reward photos, connecting phones.
 
 ### What it does not do, on purpose
 
 No points, coins, stars as currency, stickers, albums, unlocks, streak counters or reminders that
 something is about to be lost. Nothing appears during brushing except the timer, the current corner
-and the animal. The only "reward" is that the week in the forest fills up.
+and the animal. Besides the week in the forest filling up, the only reward is the optional photo
+of the week: it is never taken away again, and a week that is not fully uncovered simply ends.
 
 ## Data and sync
 

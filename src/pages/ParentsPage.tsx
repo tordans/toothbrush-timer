@@ -15,6 +15,7 @@ import {
 import { activeKids, brushingsFor } from '@/features/family/queries'
 import { SLOTS, type Animal as AnimalId, type Kid, type Toothbrush } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
+import { PhotoManager } from '@/features/photos/PhotoManager'
 import { renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
 import { useNow } from '@/hooks/use-now'
@@ -42,6 +43,7 @@ export function ParentsPage() {
         <KidsSection />
         <CalendarSection />
         <SoundSection />
+        <PhotosSection />
         <DevicesSection />
         <AboutSection />
       </div>
@@ -291,6 +293,14 @@ function SoundSection() {
         Auf dem iPhone: Ton ist auch bei stummgeschaltetem Gerät zu hören, solange die Lautstärke
         nicht ganz unten ist.
       </p>
+    </Section>
+  )
+}
+
+function PhotosSection() {
+  return (
+    <Section title="Belohnungsfotos">
+      <PhotoManager />
     </Section>
   )
 }

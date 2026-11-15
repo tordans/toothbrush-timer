@@ -1,5 +1,7 @@
 import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { Animal as AnimalId } from '@/features/family/schema'
+import { AnimalItem } from '@/features/photos/animal-items'
+import { ForestThoughtBubble } from '@/features/photos/ThoughtBubble'
 import { Animal } from './Animal'
 import { useMeadowActions, useMeadowPlants } from './meadow-store'
 import {
@@ -27,6 +29,8 @@ export type DayStatus = {
   isToday: boolean
   isFuture: boolean
   isPast: boolean
+  /** The brushing of this day still has fields to uncover on the reward photo. */
+  photoFieldsLeft?: boolean
 }
 
 type Props = {
@@ -38,6 +42,8 @@ type Props = {
   aspect: number
   /** Tapping the child's animal (to choose another one). */
   onAnimalTap?: () => void
+  /** The animal looks forward to the reward photo: shows the thought bubble; tapping opens it. */
+  onPhotoTap?: () => void
 }
 
 type Pt = { x: number; y: number }
@@ -238,7 +244,15 @@ function useGrowingThings(spots: number, max = 8) {
   return grown
 }
 
-export function ForestWeek({ days, animal, light, season, aspect, onAnimalTap }: Props) {
+export function ForestWeek({
+  days,
+  animal,
+  light,
+  season,
+  aspect,
+  onAnimalTap,
+  onPhotoTap,
+}: Props) {
   const id = useId().replace(/:/g, '')
   const portrait = aspect < PORTRAIT_BELOW
   const L = fitLayout(portrait, aspect)
@@ -394,7 +408,7 @@ export function ForestWeek({ days, animal, light, season, aspect, onAnimalTap }:
       {days.map((day, i) => {
         const p = L.stations[i]
         if (!p) return null
-        return <Station key={day.key} day={day} x={p.x} y={p.y} />
+        return <Station key={day.key} day={day} animal={animal} x={p.x} y={p.y} />
       })}
 
       {todayStation && animal && (
@@ -427,13 +441,24 @@ export function ForestWeek({ days, animal, light, season, aspect, onAnimalTap }:
             <ellipse cx="50" cy="97" rx="26" ry="5" fill="#000" opacity="0.15" />
             <Animal animal={animal} />
           </g>
+          {onPhotoTap && <ForestThoughtBubble animal={animal} onTap={onPhotoTap} />}
         </svg>
       )}
     </svg>
   )
 }
 
-function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
+function Station({
+  day,
+  animal,
+  x,
+  y,
+}: {
+  day: DayStatus
+  animal: AnimalId | null
+  x: number
+  y: number
+}) {
   const both = day.morning && day.evening
   const missed = day.isPast && !day.morning && !day.evening
   return (
@@ -460,6 +485,9 @@ function Station({ day, x, y }: { day: DayStatus; x: number; y: number }) {
       />
       <MorningFlower x={x - 44} y={y + 8} open={day.morning} s={1.6} />
       <EveningLantern x={x + 22} y={y + 10} lit={day.evening} s={1.6} />
+      {day.photoFieldsLeft && animal && (
+        <AnimalItem animal={animal} x={x + 52} y={y - 16} width={32} height={32} />
+      )}
       {/* wooden sign with the weekday */}
       <g transform={`translate(${x} ${y + 64})`}>
         <rect x="-4" y="-22" width="8" height="28" fill="#7a5638" />

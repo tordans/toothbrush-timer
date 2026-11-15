@@ -5,6 +5,7 @@ import {
   CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  FrameIcon,
   GearIcon,
   MoonIcon,
   SunIcon,
@@ -22,6 +23,7 @@ import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
+import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { useElementSize } from '@/hooks/use-element-size'
 import { useNow } from '@/hooks/use-now'
 import { useThemeColor } from '@/hooks/use-theme-color'
@@ -49,6 +51,7 @@ export function HomePage() {
   useThemeColor(SKY[light][0])
 
   const today = isoDay(now)
+  const photo = usePhotoReward(kid?.id, now)
   const days = daysAround(now, week)
   const dayStatus: DayStatus[] = days.map((d) => {
     const key = isoDay(d)
@@ -61,11 +64,14 @@ export function HomePage() {
       isToday: key === today,
       isFuture: key > today,
       isPast: key < today,
+      photoFieldsLeft: photo.daysWithFields.has(key),
     }
   })
   const brushedNow = kid ? isBrushed(family, kid.id, today, slot) : false
 
   const openParents = () => void navigate({ to: '/eltern' })
+  const openPhoto = (photoWeek?: string, kidId?: string) =>
+    navigate({ to: '/foto', search: { week: photoWeek, kid: kidId } })
 
   return (
     <main className="relative flex h-full w-full touch-manipulation flex-col overflow-hidden">
@@ -77,6 +83,9 @@ export function HomePage() {
           season={seasonFor(days[3] ?? now)}
           aspect={forestSize.width / forestSize.height}
           onAnimalTap={kid ? () => setPickingAnimal(true) : undefined}
+          onPhotoTap={
+            kid && photo.hasFieldsLeft ? () => void openPhoto(photo.week, kid.id) : undefined
+          }
         />
 
         {/* top bar */}
@@ -136,13 +145,37 @@ export function HomePage() {
                 <ChevronRight className="h-6 w-6" />
               </button>
             </div>
-            <HoldButton
-              onHold={openParents}
-              label="Für Eltern: gedrückt halten"
-              className="rounded-full bg-cream/90 p-2.5 shadow"
-            >
-              <GearIcon className="h-6 w-6 text-bark-700" />
-            </HoldButton>
+            <div className="flex items-center gap-2">
+              {photo.hasWeekPhoto && (
+                <button
+                  type="button"
+                  aria-label="Foto der Woche ansehen"
+                  onClick={() => void openPhoto(photo.week, kid?.id)}
+                  className="cursor-pointer touch-manipulation select-none rounded-full bg-cream/90 p-2.5 shadow transition active:scale-90"
+                >
+                  <FrameIcon className="h-6 w-6 text-bark-700" />
+                </button>
+              )}
+              <HoldButton
+                onHold={openParents}
+                label={
+                  photo.needsNewPhotos
+                    ? 'Eltern: Bitte neue Fotos hochladen. Gedrückt halten'
+                    : 'Für Eltern: gedrückt halten'
+                }
+                className="rounded-full bg-cream/90 p-2.5 shadow"
+              >
+                <GearIcon className="h-6 w-6 text-bark-700" />
+                {photo.needsNewPhotos && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f4a62a] text-sm font-extrabold leading-none text-bark-900 shadow ring-2 ring-cream"
+                  >
+                    !
+                  </span>
+                )}
+              </HoldButton>
+            </div>
           </div>
         </div>
       </div>

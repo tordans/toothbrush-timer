@@ -13,6 +13,7 @@ import { BrushPage } from './pages/BrushPage'
 import { HomePage } from './pages/HomePage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ParentsPage } from './pages/ParentsPage'
+import { PhotoPage } from './pages/PhotoPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { StartScreen } from './pages/StartScreen'
 
@@ -60,12 +61,28 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 })
 
+const photoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/foto',
+  validateSearch: z.object({
+    /** Monday of the week, `YYYY-MM-DD`; missing means this week. */
+    week: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .catch(undefined),
+    kid: z.string().optional().catch(undefined),
+  }),
+  component: PhotoPage,
+})
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     homeRoute,
     brushRoute,
     parentsRoute,
     overviewRoute,
+    photoRoute,
     privacyRoute,
   ]),
   defaultNotFoundComponent: () => <Navigate to="/" />,

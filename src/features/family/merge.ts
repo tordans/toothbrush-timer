@@ -1,4 +1,4 @@
-import type { FamilyState } from './schema'
+import type { FamilyState, WeekPhoto } from './schema'
 
 type Stamped = { updatedAt: string }
 
@@ -21,15 +21,46 @@ function mergeRecords<T extends Stamped>(
 }
 
 /**
+ * The same photo on both sides: every uncovered field stays uncovered (the first child to uncover
+ * a field keeps it). Different photos (two phones picked one offline): the newer one wins.
+ */
+function mergeWeekPhoto(a: WeekPhoto | undefined, b: WeekPhoto | undefined): WeekPhoto | undefined {
+  if (!a || !b || a.photoId !== b.photoId) return newer(a, b)
+  const cells = { ...a.cells }
+  for (const [index, cell] of Object.entries(b.cells)) {
+    const mine = cells[index]
+    if (!mine || cell.at < mine.at) cells[index] = cell
+  }
+  return {
+    photoId: a.photoId,
+    cells,
+    updatedAt: a.updatedAt > b.updatedAt ? a.updatedAt : b.updatedAt,
+  }
+}
+
+function mergeWeekPhotos(
+  a: Record<string, WeekPhoto>,
+  b: Record<string, WeekPhoto>,
+): Record<string, WeekPhoto> {
+  const out: Record<string, WeekPhoto> = { ...a }
+  for (const [week, photo] of Object.entries(b)) {
+    const merged = mergeWeekPhoto(out[week], photo)
+    if (merged) out[week] = merged
+  }
+  return out
+}
+
+/**
  * Merges two family states record by record: the newer `updatedAt` wins, deletes are kept as
  * tombstones. Two phones that brushed offline never lose each other's brushings.
  */
 export function mergeFamilyStates(a: FamilyState, b: FamilyState): FamilyState {
   return {
-    schema: 1,
+    schema: 2,
     kids: mergeRecords(a.kids, b.kids),
     brushings: mergeRecords(a.brushings, b.brushings),
     settings: newer(a.settings, b.settings) ?? a.settings,
+    weekPhotos: mergeWeekPhotos(a.weekPhotos, b.weekPhotos),
   }
 }
 

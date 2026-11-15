@@ -98,6 +98,13 @@ class BrushingAudio {
     for (const [freq, at] of notes) this.bell(freq, t + at, 0.3, at === 1.0 ? 3.6 : 1.8)
   }
 
+  /** A soft little bell for an uncovered photo field; `step` climbs a pentatonic scale. */
+  chime(step = 0) {
+    if (!this.ctx) return
+    const notes = [783.99, 880, 1046.5, 1174.66, 1318.51]
+    this.bell(notes[Math.abs(step) % notes.length]!, this.ctx.currentTime + 0.02, 0.12, 1.6)
+  }
+
   /** Whose song plays; the corner jingle follows it even when the music is off. */
   setAnimal(animal: Animal) {
     this.animal = animal

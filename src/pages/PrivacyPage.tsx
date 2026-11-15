@@ -49,6 +49,17 @@ export function PrivacyPage() {
               Fingerabdruck (SHA-256). Tragt deshalb am besten nur Vornamen oder Spitznamen ein.
             </p>
           </Section>
+          <Section title="Belohnungsfotos">
+            <p>
+              Wenn ihr Fotos hochladet, werden sie auf eurem Gerät verkleinert (längste Seite
+              höchstens 2048 Pixel); nur diese verkleinerte Kopie geht zum Server, das Original
+              nicht. Sie liegen als Dateien auf demselben Webspace bei all-inkl.com in Deutschland,
+              ebenfalls <strong>unverschlüsselt</strong>. Abrufen kann sie nur, wer euren
+              Familien-Link hat. Der Betreiber und der Hoster könnten sie technisch einsehen. Wir
+              werten die Fotos nicht aus und geben sie an niemanden weiter. Ihr löscht sie jederzeit
+              unter Für Eltern → Belohnungsfotos, dann sind sie sofort weg.
+            </p>
+          </Section>
           <Section title="Was sonst anfällt">
             <p>
               Falsche Einladungswörter und falsche Links werden kurz gezählt, damit niemand raten
@@ -61,8 +72,10 @@ export function PrivacyPage() {
           <Section title="Was im Browser liegt">
             <p>
               Eine Kopie eurer Familiendaten und der Familien-Schlüssel, damit die App auch ohne
-              Netz funktioniert, außerdem die App-Dateien für den Start bei schwachem WLAN. „Auf
-              diesem Gerät abmelden“ (Für Eltern → Weitere Handys) entfernt beides.
+              Netz funktioniert, dazu die Liste eurer Fotos (ohne die Bilder selbst; die lädt die
+              App bei Bedarf vom Server und der Browser darf sie zwischenspeichern), außerdem die
+              App-Dateien für den Start bei schwachem WLAN. „Auf diesem Gerät abmelden“ (Für Eltern
+              → Weitere Handys) entfernt beides.
             </p>
           </Section>
           <Section title="Externe Dienste">
@@ -78,9 +91,9 @@ export function PrivacyPage() {
           </Section>
           <Section title="Löschen">
             <p>
-              Eine Familie löschen wir auf Anfrage per E-Mail an <Mail />, samt allen Einträgen.
-              Schickt dazu den Familien-Link mit. Im Browser entfernt „Auf diesem Gerät abmelden“
-              die lokale Kopie.
+              Eine Familie löschen wir auf Anfrage per E-Mail an <Mail />, samt allen Einträgen und
+              Fotos. Schickt dazu den Familien-Link mit. Im Browser entfernt „Auf diesem Gerät
+              abmelden“ die lokale Kopie.
             </p>
           </Section>
           <Section title="Impressum">

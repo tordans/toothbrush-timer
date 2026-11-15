@@ -19,7 +19,7 @@
     "check": "bun run --parallel type-check lint format test-run knip-warn",
     "check-ci": "bun run --parallel type-check lint-check format-check test-run",
     "check-pre-push": "bun run --parallel type-check lint-check format-check test-run knip api-check",
-    "api-up": "docker compose -f api/tests/compose.yml up -d --wait",
+    "api-up": "docker compose -f api/tests/compose.yml up -d --build --wait",
     "api-down": "docker compose -f api/tests/compose.yml down",
     "api-test": "bun test --cwd api/tests",
     "prepare": "husky",

@@ -49,22 +49,42 @@ const settingsSchema = z.object({
 })
 export type Settings = z.infer<typeof settingsSchema>
 
+/** One field of the week's photo, uncovered by a child after brushing. */
+const revealedCellSchema = z.object({ kidId: z.string(), at: z.string() })
+
+/**
+ * The reward photo of one week (Monday to Sunday), shared by all children of the family. Each
+ * brushing lets the child who brushed uncover four fields of it (see rewards.ts).
+ */
+const weekPhotoSchema = z.object({
+  photoId: z.string(),
+  /** Field index (as a string) → who uncovered it. Fields are never covered again. */
+  cells: z.record(z.string(), revealedCellSchema),
+  updatedAt: z.string(),
+})
+export type WeekPhoto = z.infer<typeof weekPhotoSchema>
+
 const familyStateSchema = z.object({
-  schema: z.literal(1),
+  // Version 2 added `weekPhotos`. Older apps refuse version 2 (and so never drop the photos);
+  // this app reads version 1 and writes version 2.
+  schema: z.union([z.literal(1), z.literal(2)]).transform((): 2 => 2),
   kids: z.record(z.string(), kidSchema),
   brushings: z.record(z.string(), brushingSchema),
   settings: settingsSchema,
+  /** Keyed by the Monday of the week, `YYYY-MM-DD`. */
+  weekPhotos: z.record(isoDate, weekPhotoSchema).default({}),
 })
-export type FamilyState = z.infer<typeof familyStateSchema>
+export type FamilyState = z.output<typeof familyStateSchema>
 
 const EPOCH = '1970-01-01T00:00:00.000Z'
 
 export function emptyFamilyState(): FamilyState {
   return {
-    schema: 1,
+    schema: 2,
     kids: {},
     brushings: {},
     settings: { music: true, gong: true, updatedAt: EPOCH },
+    weekPhotos: {},
   }
 }
 

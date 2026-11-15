@@ -47,7 +47,20 @@ function brush_handle_request(): void
         case '/family/key':
             allow_methods(['POST']);
             handle_family_key_renew(require_family());
+        case '/photos':
+            allow_methods(['GET', 'POST']);
+            $family = require_family();
+            $method === 'GET' ? handle_photos_list($family) : handle_photos_create($family);
         default:
+            if (preg_match('#^/photos/([^/]+)$#', $route, $m)) {
+                allow_methods(['GET', 'DELETE']);
+                $family = require_family();
+                // Anything but 22 base64url characters cannot be an id: 404 without a database lookup
+                if (!is_photo_id($m[1])) {
+                    respond_error(404, 'not_found');
+                }
+                $method === 'GET' ? handle_photo_get($family, $m[1]) : handle_photo_delete($family, $m[1]);
+            }
             respond_error(404, 'not_found');
     }
 }

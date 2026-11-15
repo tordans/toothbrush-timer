@@ -63,14 +63,20 @@ export function clearThrottle() {
   compose('web', ['rm', '-rf', '/srv/brush/logs/throttle'])
 }
 
+/** Remove all stored photo files (the rows go with their families). */
+export function clearPhotoFiles() {
+  compose('web', ['rm', '-rf', '/srv/brush/data'])
+}
+
 /**
- * Empty slate: no families, no invite attempts, no throttle. The warm-up request makes the API
+ * Empty slate: no families, no invite attempts, no throttle, no photo files. The warm-up request makes the API
  * create the tables first if the stack is brand new.
  */
 export async function resetAll() {
   await api('/api/state', { key: 'warm-up' })
   sql('DELETE FROM invite_attempts; DELETE FROM families;')
   clearThrottle()
+  clearPhotoFiles()
 }
 
 export const createFamilyRequest = (invite: unknown = INVITE) =>

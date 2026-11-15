@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { api, clearThrottle, createFamily, createFamilyRequest, resetAll, sql } from './helpers'
 
 // The API creates its tables itself, on the first request that needs the database.
-const dropTables = () => sql('DROP TABLE IF EXISTS families, invite_attempts, schema_migrations')
+const dropTables = () =>
+  sql('DROP TABLE IF EXISTS photos, families, invite_attempts, schema_migrations')
 const tables = () =>
   sql(
     "SELECT table_name FROM information_schema.tables WHERE table_schema = 'brush' ORDER BY table_name",
@@ -27,8 +28,8 @@ describe('the API migrates itself', () => {
     expect(res.status).toBe(403)
     expect(res.json).toEqual({ error: 'invalid_invite' })
 
-    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
-    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init')
+    expect(tables()).toEqual(['families', 'invite_attempts', 'photos', 'schema_migrations'])
+    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init\n0002_photos')
   })
 
   test('works from the first request on: create a family on a fresh database', async () => {
@@ -42,7 +43,7 @@ describe('the API migrates itself', () => {
     dropTables()
     const res = await api('/api/state', { key: 'unknown-key' })
     expect(res.status).toBe(401)
-    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
+    expect(tables()).toEqual(['families', 'invite_attempts', 'photos', 'schema_migrations'])
     clearThrottle()
   })
 
@@ -52,8 +53,8 @@ describe('the API migrates itself', () => {
       Array.from({ length: 10 }, (_, i) => createFamilyRequest(`wrong-${i}`)),
     )
     expect(results.map((r) => r.status)).toEqual(Array(10).fill(403))
-    expect(tables()).toEqual(['families', 'invite_attempts', 'schema_migrations'])
-    expect(sql('SELECT COUNT(*) FROM schema_migrations').trim()).toBe('1')
+    expect(tables()).toEqual(['families', 'invite_attempts', 'photos', 'schema_migrations'])
+    expect(sql('SELECT COUNT(*) FROM schema_migrations').trim()).toBe('2')
   })
 
   test('nothing pending: a request changes nothing', async () => {
@@ -79,6 +80,20 @@ describe('the API migrates itself', () => {
     expect(read.status).toBe(200)
     expect(read.json.data).toEqual({ keep: 'me' })
     expect(read.json.version).toBe(1)
-    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init')
+    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init\n0002_photos')
+  })
+
+  test('the photos migration can run twice without losing rows', async () => {
+    await resetAll()
+    const key = await createFamily()
+    sql(
+      `INSERT INTO photos (id, family_id, type, width, height, bytes, created_at)
+       SELECT 'aaaaaaaaaaaaaaaaaaaaaa', id, 'image/jpeg', 8, 6, 100, UTC_TIMESTAMP(3) FROM families;`,
+    )
+    sql("DELETE FROM schema_migrations WHERE name = '0002_photos'")
+    const list = await api('/api/photos', { key })
+    expect(list.status).toBe(200)
+    expect(list.json.photos).toHaveLength(1)
+    expect(sql('SELECT name FROM schema_migrations').trim()).toBe('0001_init\n0002_photos')
   })
 })

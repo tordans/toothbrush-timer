@@ -3,5 +3,6 @@
 set -e
 
 # Logs are written by www-data
+chown www-data:www-data /srv/brush
 chown -R www-data:www-data /srv/brush/logs
 exec docker-php-entrypoint "$@"

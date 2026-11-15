@@ -14,11 +14,14 @@ import { familyStore, useFamily, useFamilyActions } from '@/features/family/fami
 import type { Animal as AnimalId } from '@/features/family/schema'
 import { Animal } from '@/features/forest/Animal'
 import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
+import { ThoughtBubble } from '@/features/photos/ThoughtBubble'
+import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { brushingAudio } from '@/features/timer/audio'
 import { MouthDial } from '@/features/timer/MouthDial'
 import { brushingSeconds, clockLabel, SECTIONS } from '@/features/timer/sections'
 import { useBrushingTimer } from '@/features/timer/use-brushing-timer'
 import { allowScreenOff, keepScreenOn } from '@/features/timer/wake-lock'
+import { useNow } from '@/hooks/use-now'
 import { useThemeColor } from '@/hooks/use-theme-color'
 import { isoDay } from '@/lib/dates'
 
@@ -182,7 +185,13 @@ export function BrushPage() {
       </div>
 
       {timer.phase === 'done' ? (
-        <Done animal={kid.animal} evening={evening} onHome={() => void navigate({ to: '/' })} />
+        <Done
+          kidId={kid.id}
+          animal={kid.animal}
+          evening={evening}
+          onHome={() => void navigate({ to: '/' })}
+          onPhoto={(week) => void navigate({ to: '/foto', search: { week, kid: kid.id } })}
+        />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] landscape:flex-row landscape:gap-10">
           {/* dial with the animal */}
@@ -298,14 +307,20 @@ export function BrushPage() {
 }
 
 function Done({
+  kidId,
   animal,
   evening,
   onHome,
+  onPhoto,
 }: {
+  kidId: string
   animal: AnimalId
   evening: boolean
   onHome: () => void
+  onPhoto: (week: string) => void
 }) {
+  // Only while the child has fields left to uncover; never a "done" state.
+  const photo = usePhotoReward(kidId, useNow())
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-center landscape:flex-row landscape:gap-10 landscape:text-left">
       <div className="flex shrink-0 items-end">
@@ -327,6 +342,12 @@ function Done({
           <div className="animate-hop">
             <Animal animal={animal} />
           </div>
+          {photo.hasFieldsLeft && (
+            <ThoughtBubble
+              animal={animal}
+              className="pointer-events-none absolute -top-14 left-[55%] w-24 animate-bob landscape:-top-[18vh] landscape:w-[16vh]"
+            />
+          )}
         </div>
       </div>
       <div className="flex flex-col items-center gap-3 landscape:items-start">
@@ -334,9 +355,21 @@ function Done({
         <p className="text-xl font-semibold opacity-85">
           Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
         </p>
-        <Button size="lg" className="text-2xl" onClick={onHome}>
-          Zurück in den Wald
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-3 landscape:justify-start">
+          <Button size="lg" className="text-2xl" onClick={onHome}>
+            Zurück in den Wald
+          </Button>
+          {photo.hasFieldsLeft && (
+            <Button
+              size="lg"
+              variant="secondary"
+              className="min-h-11 cursor-pointer select-none text-2xl"
+              onClick={() => onPhoto(photo.week)}
+            >
+              Zum Foto
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

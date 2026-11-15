@@ -1,4 +1,4 @@
-import { addDays, format, isValid, parseISO } from 'date-fns'
+import { addDays, format, isValid, parseISO, startOfISOWeek } from 'date-fns'
 import { de } from 'date-fns/locale'
 import type { Slot } from '@/features/family/schema'
 
@@ -16,6 +16,17 @@ export function slotForTime(date: Date): Slot {
 export function daysAround(date: Date, offset = 0): Date[] {
   const first = addDays(date, offset * 7 - 3)
   return Array.from({ length: 7 }, (_, i) => addDays(first, i))
+}
+
+/** The Monday of the week of `date`, `YYYY-MM-DD`: the key of a week's reward photo. */
+export function weekKey(date: Date): string {
+  return isoDay(startOfISOWeek(date))
+}
+
+/** The seven days (Monday to Sunday) of the week that starts on `week`. */
+export function weekDays(week: string): string[] {
+  const monday = parseISO(week)
+  return Array.from({ length: 7 }, (_, i) => isoDay(addDays(monday, i)))
 }
 
 export function weekdayShort(date: Date): string {

@@ -1,15 +1,18 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { addMonths, eachDayOfInterval, endOfMonth, format, getISODay, startOfMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import { twMerge } from 'tailwind-merge'
 import { ChevronLeft } from '@/components/icons'
 import { AnimalBadge, Button } from '@/components/ui'
 import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { activeKids } from '@/features/family/queries'
 import type { FamilyState } from '@/features/family/schema'
+import { usePhotos } from '@/features/photos/photo-store'
+import { photoForWeek, photosEnabled, type WeekPhotoInfo } from '@/features/photos/rewards'
+import { WeekThumb } from '@/features/photos/WeekThumb'
 import { useNow } from '@/hooks/use-now'
-import { fromIsoDay, isoDay } from '@/lib/dates'
+import { fromIsoDay, isoDay, weekKey } from '@/lib/dates'
 
 const route = getRouteApi('/uebersicht')
 
@@ -36,6 +39,7 @@ function doneByDay(family: FamilyState, kidId: string): Map<string, Done> {
 export function OverviewPage() {
   const navigate = useNavigate()
   const family = useFamily()
+  const photos = usePhotos()
   const activeKidId = useActiveKidId()
   const { setActiveKid } = useFamilyActions()
   const { kid: kidParam } = route.useSearch()
@@ -60,6 +64,7 @@ export function OverviewPage() {
 
   const done = doneByDay(family, kid.id)
   const today = isoDay(now)
+  const currentWeek = weekKey(now)
   const firstDay = [...done.keys()].sort()[0] ?? today
   const months: Date[] = []
   for (let m = startOfMonth(fromIsoDay(firstDay)); m <= now; m = addMonths(m, 1)) months.push(m)
@@ -100,7 +105,18 @@ export function OverviewPage() {
             {months
               .filter((m) => m.getFullYear() === year)
               .map((month) => (
-                <MonthCard key={month.toISOString()} month={month} done={done} today={today} />
+                <MonthCard
+                  key={month.toISOString()}
+                  month={month}
+                  done={done}
+                  today={today}
+                  weekPhoto={(week) =>
+                    photosEnabled(photos) ? photoForWeek(family, photos, week, currentWeek) : null
+                  }
+                  onOpenPhoto={(week) =>
+                    void navigate({ to: '/foto', search: { week, kid: kid.id } })
+                  }
+                />
               ))}
           </section>
         ))}
@@ -114,22 +130,53 @@ function MonthCard({
   month,
   done,
   today,
+  weekPhoto,
+  onOpenPhoto,
 }: {
   month: Date
   done: Map<string, Done>
   today: string
+  weekPhoto: (week: string) => WeekPhotoInfo | null
+  onOpenPhoto: (week: string) => void
 }) {
   const days = eachDayOfInterval({ start: month, end: endOfMonth(month) })
   const leading = getISODay(month) - 1
+  // After every row (Monday to Sunday, or the part of it in this month) comes the week's photo.
+  const rowWeeks = [...new Set(days.map((d) => weekKey(d)))]
+  const photos = new Map(rowWeeks.map((w) => [w, weekPhoto(w)] as const))
+  const thumbs = [...photos.values()].some(Boolean)
+  const trailing = (7 - ((leading + days.length) % 7)) % 7
+
+  const thumbCell = (week: string) => {
+    const info = photos.get(week)
+    return (
+      <div key={`photo-${week}`} className="flex items-center justify-center">
+        {info && (
+          <WeekThumb
+            info={info}
+            label={`Foto der Woche ab ${format(fromIsoDay(week), 'd. MMMM', { locale: de })}`}
+            onOpen={() => onOpenPhoto(week)}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <article className="rounded-3xl bg-cream p-3 shadow-lg sm:p-4">
       <h3 className="mb-2 px-1 text-xl font-extrabold">{format(month, 'MMMM', { locale: de })}</h3>
-      <div className="grid grid-cols-7 gap-1 text-center">
+      <div
+        className={twMerge(
+          'grid gap-1 text-center',
+          thumbs ? 'grid-cols-[repeat(7,minmax(0,1fr))_2.75rem]' : 'grid-cols-7',
+        )}
+      >
         {WEEKDAYS.map((d) => (
           <span key={d} className="text-xs font-bold text-bark-500">
             {d}
           </span>
         ))}
+        {thumbs && <span />}
         {Array.from({ length: leading }, (_, i) => (
           <span key={`empty-${i}`} />
         ))}
@@ -138,36 +185,51 @@ function MonthCard({
           const state = done.get(key) ?? { morning: false, evening: false }
           const future = key > today
           return (
-            <div
-              key={key}
-              className={twMerge(
-                'flex flex-col items-center rounded-xl pb-1 pt-0.5',
-                state.morning && state.evening ? 'bg-[#c8e39a]' : 'bg-moss-100',
-                key === today && 'ring-2 ring-sun',
-                future && 'opacity-40',
-              )}
-            >
-              <span className="text-xs font-bold text-bark-700">{day.getDate()}</span>
-              {!future && (
-                <span className="flex items-end gap-0.5">
-                  <MiniFlower open={state.morning} />
-                  <MiniLantern lit={state.evening} />
-                </span>
-              )}
-            </div>
+            <Fragment key={key}>
+              <div
+                className={twMerge(
+                  'flex flex-col items-center rounded-xl pb-1 pt-0.5',
+                  state.morning && state.evening ? 'bg-[#c8e39a]' : 'bg-moss-100',
+                  key === today && 'ring-2 ring-sun',
+                  future && 'opacity-40',
+                )}
+              >
+                <span className="text-xs font-bold text-bark-700">{day.getDate()}</span>
+                {!future && (
+                  <span className="flex items-end gap-0.5">
+                    <MiniFlower open={state.morning} compact={thumbs} />
+                    <MiniLantern lit={state.evening} compact={thumbs} />
+                  </span>
+                )}
+              </div>
+              {thumbs && getISODay(day) === 7 && thumbCell(weekKey(day))}
+            </Fragment>
           )
         })}
+        {thumbs && trailing > 0 && (
+          <>
+            {Array.from({ length: trailing }, (_, i) => (
+              <span key={`end-${i}`} />
+            ))}
+            {thumbCell(weekKey(days[days.length - 1]!))}
+          </>
+        )}
       </div>
     </article>
   )
 }
 
+const ICON = 'h-5 w-5 sm:h-7 sm:w-7'
+/** With a photo column next to the days the icons are a little smaller on phones. */
+const ICON_COMPACT =
+  'h-3.5 w-3.5 min-[360px]:h-4 min-[360px]:w-4 min-[420px]:h-5 min-[420px]:w-5 sm:h-7 sm:w-7'
+
 /** Small versions of the forest signs: open flower = morning brushed, lit lantern = evening. */
-function MiniFlower({ open }: { open: boolean }) {
+function MiniFlower({ open, compact }: { open: boolean; compact?: boolean }) {
   return (
     <svg
       viewBox="-10 -12 20 22"
-      className="h-5 w-5 sm:h-7 sm:w-7"
+      className={compact ? ICON_COMPACT : ICON}
       aria-label={open ? 'Morgens geputzt' : 'Morgens nicht geputzt'}
     >
       <path d="M0 10 L0 0" stroke="#5a8a3c" strokeWidth="2" />
@@ -193,11 +255,11 @@ function MiniFlower({ open }: { open: boolean }) {
   )
 }
 
-function MiniLantern({ lit }: { lit: boolean }) {
+function MiniLantern({ lit, compact }: { lit: boolean; compact?: boolean }) {
   return (
     <svg
       viewBox="-10 -12 20 22"
-      className="h-5 w-5 sm:h-7 sm:w-7"
+      className={compact ? ICON_COMPACT : ICON}
       aria-label={lit ? 'Abends geputzt' : 'Abends nicht geputzt'}
     >
       {lit && <circle cx="0" cy="0" r="9" fill="#ffd27a" opacity="0.45" />}
