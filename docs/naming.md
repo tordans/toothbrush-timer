@@ -31,6 +31,6 @@ in-app subline stays "Zwei Minuten, vier Ecken."
 
 ## Repository and hosting
 
-- Repository: `tordans/toothbrush-timer` (the local folder is still called `zahnputtimer`).
+- Repository: `tordans/toothbrush-timer`, in a local folder of the same name.
 - all-inkl: subdomain `brush.ingsparks.de`, FTP root `brush.ingsparks.de/`, document root
   `brush.ingsparks.de/public/`.
