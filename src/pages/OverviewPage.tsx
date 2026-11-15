@@ -77,24 +77,26 @@ export function OverviewPage() {
           <ChevronLeft className="h-5 w-5" />
           Zurück in den Wald
         </Button>
+        {/* Switching children only makes sense with more than one. */}
         <div className="ml-auto flex flex-wrap gap-2">
-          {kids.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              onClick={() => {
-                setActiveKid(k.id)
-                void navigate({ to: '/uebersicht', search: { kid: k.id }, replace: true })
-              }}
-              className={twMerge(
-                'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold transition active:scale-95',
-                k.id === kid.id ? 'bg-cream text-bark-900' : 'bg-white/20 text-cream',
-              )}
-            >
-              <AnimalBadge animal={k.animal} className="h-9 w-9 bg-white" />
-              {k.name}
-            </button>
-          ))}
+          {kids.length > 1 &&
+            kids.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                onClick={() => {
+                  setActiveKid(k.id)
+                  void navigate({ to: '/uebersicht', search: { kid: k.id }, replace: true })
+                }}
+                className={twMerge(
+                  'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold transition active:scale-95',
+                  k.id === kid.id ? 'bg-cream text-bark-900' : 'bg-white/20 text-cream',
+                )}
+              >
+                <AnimalBadge animal={k.animal} className="h-9 w-9 bg-white" />
+                {k.name}
+              </button>
+            ))}
         </div>
       </div>
 

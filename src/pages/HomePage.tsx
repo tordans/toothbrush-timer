@@ -4,6 +4,7 @@ import { twMerge } from 'tailwind-merge'
 import {
   CalendarIcon,
   ChevronLeft,
+  CloseIcon,
   ChevronRight,
   FrameIcon,
   GearIcon,
@@ -92,70 +93,91 @@ export function HomePage() {
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
           {/* min-w-0: names shrink first, so the parents' gear always stays on screen */}
           <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-            {/* Tap another child to switch; tap the current child to see all months. */}
-            {kids.map((k) => {
-              const current = k.id === kid?.id
-              return (
+            {kid && (
+              <>
+                {/* The calendar: all months of this child. */}
+                <button
+                  type="button"
+                  aria-label={`Alle Monate von ${kid.name} ansehen`}
+                  onClick={() => void navigate({ to: '/uebersicht', search: { kid: kid.id } })}
+                  className="flex h-12 w-12 shrink-0 cursor-pointer select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
+                >
+                  <CalendarIcon className="h-6 w-6" />
+                </button>
+                {/* The photo of the week, when there is one. */}
+                {photo.hasWeekPhoto && (
+                  <button
+                    type="button"
+                    aria-label="Foto der Woche ansehen"
+                    onClick={() => void openPhoto(photo.week, kid.id)}
+                    className="flex h-12 w-12 shrink-0 cursor-pointer touch-manipulation select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
+                  >
+                    <FrameIcon className="h-6 w-6" />
+                  </button>
+                )}
+                {/* The animal: same as tapping the animal in the forest, opens the animal choice. */}
+                <button
+                  type="button"
+                  aria-label={`Tier für ${kid.name} wählen`}
+                  onClick={() => setPickingAnimal(true)}
+                  className="shrink-0 cursor-pointer select-none rounded-full shadow transition active:scale-90"
+                >
+                  <AnimalBadge animal={kid.animal} className="h-12 w-12 bg-white" />
+                </button>
+                {/* The name is only a label. */}
+                <span className="min-w-0 self-center truncate rounded-full bg-cream/80 px-3 py-1 text-lg font-extrabold text-bark-900">
+                  {kid.name}
+                </span>
+              </>
+            )}
+            {/* With several children: the others, to switch. */}
+            {kids
+              .filter((k) => k.id !== kid?.id)
+              .map((k) => (
                 <button
                   key={k.id}
                   type="button"
-                  aria-label={current ? `${k.name}: alle Monate ansehen` : `${k.name} auswählen`}
-                  onClick={() =>
-                    current
-                      ? void navigate({ to: '/uebersicht', search: { kid: k.id } })
-                      : setActiveKid(k.id)
-                  }
-                  className={twMerge(
-                    'flex min-w-0 max-w-full items-center gap-2 rounded-full py-1 pl-1 pr-3 text-lg font-extrabold shadow transition active:scale-95',
-                    current ? 'bg-cream text-bark-900' : 'bg-white/40 text-bark-900/70',
-                  )}
+                  aria-label={`${k.name} auswählen`}
+                  onClick={() => setActiveKid(k.id)}
+                  className="flex min-w-0 max-w-full cursor-pointer select-none items-center gap-2 rounded-full bg-white/40 py-1 pl-1 pr-3 text-lg font-extrabold text-bark-900/70 shadow transition active:scale-95"
                 >
                   <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
                   <span className="truncate">{k.name}</span>
-                  {current && <CalendarIcon className="h-5 w-5 shrink-0 text-bark-600" />}
                 </button>
-              )
-            })}
+              ))}
           </div>
           {/* on narrow screens the gear sits above the week switch */}
           <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
-            <div className="flex items-center rounded-full bg-cream/90 shadow">
-              <button
-                type="button"
-                aria-label="Woche davor"
-                className="p-2.5 transition active:scale-90"
-                onClick={() =>
-                  void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
-                }
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </button>
-              <span className="min-w-[5.5rem] text-center text-xs sm:min-w-[7.5rem] sm:text-sm font-bold">
+            <div className="flex items-center gap-1.5">
+              {/* Which days the forest shows, as a plain label next to the arrows. */}
+              <span className="rounded-full bg-cream/80 px-2.5 py-1 text-xs font-bold text-bark-900 sm:text-sm">
                 {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
               </span>
-              <button
-                type="button"
-                aria-label="Woche danach"
-                className="p-2.5 transition active:scale-90 disabled:opacity-30"
-                disabled={week === 0}
-                onClick={() =>
-                  void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
-                }
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {photo.hasWeekPhoto && (
+              <div className="flex items-center rounded-full bg-cream/90 shadow">
                 <button
                   type="button"
-                  aria-label="Foto der Woche ansehen"
-                  onClick={() => void openPhoto(photo.week, kid?.id)}
-                  className="cursor-pointer touch-manipulation select-none rounded-full bg-cream/90 p-2.5 shadow transition active:scale-90"
+                  aria-label="Woche davor"
+                  className="cursor-pointer select-none p-2 transition active:scale-90"
+                  onClick={() =>
+                    void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
+                  }
                 >
-                  <FrameIcon className="h-6 w-6 text-bark-700" />
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
-              )}
+                <button
+                  type="button"
+                  aria-label="Woche danach"
+                  className="cursor-pointer select-none p-2 transition active:scale-90 disabled:opacity-30"
+                  disabled={week === 0}
+                  onClick={() =>
+                    void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
+                  }
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <HoldButton
                 onHold={openParents}
                 label={
@@ -320,11 +342,19 @@ function AnimalDialog({
       }}
     >
       <Card className="m-auto flex w-full max-w-lg animate-fadein flex-col gap-4">
-        <h2 className="text-2xl font-extrabold">Wer putzt mit dir, {name}?</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-2xl font-extrabold">Wer putzt mit dir, {name}?</h2>
+          {/* Tapping an animal takes it at once; this only closes without a change. */}
+          <button
+            type="button"
+            aria-label="Schließen"
+            onClick={onClose}
+            className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 cursor-pointer select-none items-center justify-center rounded-full bg-moss-50 text-bark-700 transition active:scale-90"
+          >
+            <CloseIcon className="h-6 w-6" />
+          </button>
+        </div>
         <AnimalPicker value={animal} onChange={onPick} />
-        <Button variant="secondary" onClick={onClose}>
-          So lassen
-        </Button>
       </Card>
     </div>
   )

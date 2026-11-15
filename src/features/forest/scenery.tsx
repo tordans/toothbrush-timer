@@ -211,6 +211,29 @@ export function Grass(p: At) {
 }
 
 /** Morning: a closed bud that opens into a sun-coloured flower once brushed. */
+const MEADOW_PETALS = ['#f4a6c0', '#ffffff', '#b9a6f0'] as const
+
+/**
+ * A small meadow flower for what the child plants by tapping (and for decoration). Deliberately
+ * unlike the morning flower: five round petals in pink, white or lilac and no glow, because the
+ * glowing yellow flower means "brushed this morning".
+ */
+export function MeadowFlower({ variant = 0, ...p }: At & { variant?: number }) {
+  const petal = MEADOW_PETALS[variant % MEADOW_PETALS.length]
+  return (
+    <g transform={place(p)}>
+      <path d="M0 0 L0 -34" stroke="#5a8a3c" strokeWidth="4" strokeLinecap="round" />
+      <path d="M0 -12 Q12 -16 15 -26 Q4 -24 0 -16" fill="#6f9a45" />
+      <g transform="translate(0 -40)">
+        {Array.from({ length: 5 }, (_, i) => (
+          <circle key={i} cx="0" cy="-8" r="7" fill={petal} transform={`rotate(${i * 72})`} />
+        ))}
+        <circle r="5" fill="#f2b53c" />
+      </g>
+    </g>
+  )
+}
+
 export function MorningFlower({ open, ...p }: At & { open: boolean }) {
   return (
     <g transform={place(p)}>

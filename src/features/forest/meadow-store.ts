@@ -3,7 +3,13 @@ import { create } from 'zustand'
 /** Portrait and landscape have different SVG coordinate systems, so each has its own list. */
 type MeadowLayout = 'portrait' | 'landscape'
 type PlantKind = 'grass' | 'flower' | 'mushroom'
-type Plant = { id: number; x: number; y: number; kind: PlantKind }
+type Plant = { id: number; x: number; y: number; kind: PlantKind; plantedAt: number }
+
+/**
+ * How long a planted thing stays. The store is not persisted, but the Home Screen app may stay
+ * open for days without a reload, so the meadow clears itself over time instead.
+ */
+export const PLANT_LIFETIME_MS = 12 * 60 * 60 * 1000
 
 const MAX_PLANTS_PER_LAYOUT = 200
 
@@ -31,11 +37,12 @@ const useMeadowStore = create<MeadowStore>()((set) => ({
   actions: {
     addPlant: (layout, x, y) => {
       lastPlantId += 1
-      const plant: Plant = { id: lastPlantId, x, y, kind: pickKind() }
+      const plant: Plant = { id: lastPlantId, x, y, kind: pickKind(), plantedAt: Date.now() }
+      const alive = (p: Plant) => p.plantedAt > plant.plantedAt - PLANT_LIFETIME_MS
       set((s) => ({
         plants: {
           ...s.plants,
-          [layout]: [...s.plants[layout], plant].slice(-MAX_PLANTS_PER_LAYOUT),
+          [layout]: [...s.plants[layout].filter(alive), plant].slice(-MAX_PLANTS_PER_LAYOUT),
         },
       }))
     },

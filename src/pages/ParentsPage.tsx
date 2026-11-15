@@ -24,22 +24,18 @@ import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/
 export function ParentsPage() {
   const navigate = useNavigate()
   return (
-    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 pb-16">
-        <div className="flex items-center gap-3 text-cream">
+    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      {/* The one way out stays in view while scrolling, like on the calendar. */}
+      <div className="sticky top-0 z-10 bg-moss-800/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+        <div className="mx-auto max-w-2xl">
           <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
             <ChevronLeft className="h-5 w-5" />
             Zurück in den Wald
           </Button>
         </div>
+      </div>
+      <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-16">
         <h1 className="px-1 text-3xl font-extrabold text-cream">Für Eltern</h1>
-        <Button
-          variant="secondary"
-          className="self-start"
-          onClick={() => void navigate({ to: '/uebersicht' })}
-        >
-          Alle Monate ansehen
-        </Button>
         <KidsSection />
         <CalendarSection />
         <SoundSection />

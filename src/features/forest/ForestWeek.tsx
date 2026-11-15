@@ -2,13 +2,15 @@ import { useEffect, useId, useState, type CSSProperties, type MouseEvent } from 
 import type { Animal as AnimalId } from '@/features/family/schema'
 import { AnimalItem } from '@/features/photos/animal-items'
 import { ForestThoughtBubble } from '@/features/photos/ThoughtBubble'
+import { useNow } from '@/hooks/use-now'
 import { Animal } from './Animal'
-import { useMeadowActions, useMeadowPlants } from './meadow-store'
+import { PLANT_LIFETIME_MS, useMeadowActions, useMeadowPlants } from './meadow-store'
 import {
   Bush,
   EveningLantern,
   Fern,
   Grass,
+  MeadowFlower,
   MorningFlower,
   Mushroom,
   PineTree,
@@ -265,7 +267,11 @@ export function ForestWeek({
       ? `M${L.pathStart.x} ${L.pathStart.y} ${segments.slice(0, lastPast + 1).join(' ')}`
       : ''
   const grown = useGrowingThings(L.grow.length)
-  const plants = useMeadowPlants(portrait ? 'portrait' : 'landscape')
+  // Planted things wither after a while (the clock ticks every 30 seconds).
+  const now = useNow().getTime()
+  const plants = useMeadowPlants(portrait ? 'portrait' : 'landscape').filter(
+    (p) => now - p.plantedAt < PLANT_LIFETIME_MS,
+  )
   const { addPlant } = useMeadowActions()
   // Tapping the meadow grows a plant at the tapped point (in viewBox coordinates).
   // A tap anywhere on the ground (meadow, path, clearings, bushes) grows a plant there; not in the
@@ -386,7 +392,9 @@ export function ForestWeek({
       {plants.map((plant) => (
         <g key={plant.id} className="animate-grow" style={GROW}>
           {plant.kind === 'grass' && <Grass x={plant.x} y={plant.y} s={1.3} />}
-          {plant.kind === 'flower' && <MorningFlower x={plant.x} y={plant.y} open s={0.7} />}
+          {plant.kind === 'flower' && (
+            <MeadowFlower x={plant.x} y={plant.y} s={0.9} variant={plant.id} />
+          )}
           {plant.kind === 'mushroom' && <Mushroom x={plant.x} y={plant.y} s={1} />}
         </g>
       ))}
@@ -399,7 +407,7 @@ export function ForestWeek({
             {n % 2 === 0 ? (
               <Mushroom x={p.x} y={p.y} s={1.1} />
             ) : (
-              <MorningFlower x={p.x} y={p.y} open s={0.8} />
+              <MeadowFlower x={p.x} y={p.y} s={1} variant={n} />
             )}
           </g>
         )
