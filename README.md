@@ -17,7 +17,7 @@ corners. UI in German. Home: <https://brush.ingsparks.de> (name: [docs/naming.md
   the original never leaves the device). Each week one photo is shared by all children; after every
   brushing a child uncovers four of its 56 fields. One photo is used up per week. Without uploaded
   photos the feature does not exist.
-- **Several children,** each with an animal: fox, hedgehog, owl, rabbit, squirrel, bear, koala. Every animal has its own song.
+- **Several children,** each with an animal: fox, hedgehog, owl, rabbit, squirrel, bear, koala. Every animal has its own song. Personas: [docs/animals.md](docs/animals.md).
 - **For parents** (hold the gear for a second): children, correcting the last two weeks, sound,
   reward photos, connecting phones.
 
