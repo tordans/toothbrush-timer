@@ -8,9 +8,20 @@ body,
   height: 100%;
 }
 
+/* The page itself never scrolls or bounces: every screen fills it and scrolls inside. */
+html,
 body {
-  @apply bg-moss-900 font-sans text-bark-900 antialiased;
+  overflow: hidden;
   overscroll-behavior: none;
+}
+
+html {
+  /* No double-tap zoom anywhere; pinch zoom stays in the browser (see no-zoom.ts). */
+  touch-action: manipulation;
+}
+
+body {
+  @apply bg-moss-800 font-sans text-bark-900 antialiased;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;

@@ -11,10 +11,17 @@
       name="description"
       content="Zahnputz-Timer für Kinder: zwei Minuten, vier Ecken, morgens und abends. Ruhig, ohne Punkte und ohne Belohnungen."
     />
-    <meta name="theme-color" content="#405825" />
+    <!-- Colours the status bar of the Home Screen app; each page sets its own (use-theme-color.ts). -->
+    <meta name="theme-color" content="#354722" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      Not "black-translucent": since iOS/iPadOS 26.1 the system lays a dark gradient over that bar
+      that no page can remove, and lays the page out one status bar too short (a band at the
+      bottom). With "default" the bar is opaque, coloured by theme-color, and the page fills the
+      rest of the screen. iOS reads this tag when the icon is added: change it, re-add the icon.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Zähneputzen" />
     <title>brush.ingsparks.de – Zahnputz-Timer für Kinder</title>
   </head>

@@ -21,9 +21,10 @@ import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/f
 import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
-import { dayLightForSlot, seasonFor } from '@/features/forest/scenery'
+import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
 import { useElementSize } from '@/hooks/use-element-size'
 import { useNow } from '@/hooks/use-now'
+import { useThemeColor } from '@/hooks/use-theme-color'
 import { daysAround, isoDay, slotForTime, weekdayShort, weekRangeLabel } from '@/lib/dates'
 
 const route = getRouteApi('/')
@@ -44,6 +45,8 @@ export function HomePage() {
   const [chosenSlot, setChosenSlot] = useState<Slot | null>(null)
   const [pickingAnimal, setPickingAnimal] = useState(false)
   const slot = chosenSlot ?? slotForTime(now)
+  const light = dayLightForSlot(slot, now)
+  useThemeColor(SKY[light][0])
 
   const today = isoDay(now)
   const days = daysAround(now, week)
@@ -70,7 +73,7 @@ export function HomePage() {
         <ForestWeek
           days={dayStatus}
           animal={kid?.animal ?? null}
-          light={dayLightForSlot(slot, now)}
+          light={light}
           season={seasonFor(days[3] ?? now)}
           aspect={forestSize.width / forestSize.height}
           onAnimalTap={kid ? () => setPickingAnimal(true) : undefined}

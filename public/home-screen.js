@@ -27,7 +27,7 @@
         scope: origin + '/',
         display: 'standalone',
         background_color: '#2d3c1f',
-        theme_color: '#405825',
+        theme_color: '#354722',
         icons: [
           { src: origin + '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: origin + '/icon-512.png', sizes: '512x512', type: 'image/png' },

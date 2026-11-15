@@ -19,6 +19,7 @@ import { MouthDial } from '@/features/timer/MouthDial'
 import { brushingSeconds, clockLabel, SECTIONS } from '@/features/timer/sections'
 import { useBrushingTimer } from '@/features/timer/use-brushing-timer'
 import { allowScreenOff, keepScreenOn } from '@/features/timer/wake-lock'
+import { useThemeColor } from '@/hooks/use-theme-color'
 import { isoDay } from '@/lib/dates'
 
 const route = getRouteApi('/putzen')
@@ -145,6 +146,8 @@ export function BrushPage() {
   const section = SECTIONS[position.sectionIndex]
   const corner = section ?? SECTIONS[0]
   const evening = slot === 'evening'
+  // The top colours of the two backgrounds below (night and #bfe3f2).
+  useThemeColor(evening ? '#1f2347' : '#bfe3f2')
 
   return (
     <main
