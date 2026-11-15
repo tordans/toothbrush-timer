@@ -4,17 +4,25 @@ import { useEffect } from 'react'
 const MOSS_BAR = '#354722'
 
 /**
- * Colours the status bar above the page in the Home Screen app (iPhone, iPad, Android) to match
- * the top of the screen, so the bar reads as part of the app. The browser tints its own bars with
- * it too, where it does that. Leaving the page puts the default back.
+ * Matches the edge above the page to the top of the screen, so it reads as part of the app.
+ *
+ * In the Home Screen app on iPhone and iPad (iOS 26 and later) the status bar has no colour of its
+ * own: the system fades the page's background colour over the top of the content. Measured in the
+ * simulator: neither theme-color (meta or manifest) nor changing it later has any effect there. So
+ * the page background takes the colour of the top of the screen (the sky in the forest), and the
+ * fade disappears into it. theme-color is still set for browsers that tint their bars with it.
+ * Leaving the page puts the defaults back.
  */
 export function useThemeColor(color: string) {
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    if (!meta) return
-    meta.content = color
+    if (meta) meta.content = color
+    document.documentElement.style.backgroundColor = color
+    document.body.style.backgroundColor = color
     return () => {
-      meta.content = MOSS_BAR
+      if (meta) meta.content = MOSS_BAR
+      document.documentElement.style.backgroundColor = ''
+      document.body.style.backgroundColor = ''
     }
   }, [color])
 }
