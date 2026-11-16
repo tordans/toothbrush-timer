@@ -2,7 +2,9 @@
 // would start without the family link. Safari reads the manifest once, when the page loads,
 // and uses its start address for the new icon. So on iOS this page gets a manifest whose start
 // address carries the family key: from the link just opened, or the one this browser already
-// stores. Other browsers share storage with their installed apps and keep the plain manifest.
+// stores. The key is a passphrase (tanne-mond-...) or an old random key; both survive
+// encodeURIComponent and decodeURIComponent unchanged. Other browsers share storage with their
+// installed apps and keep the plain manifest.
 //
 // Plain ES5 on purpose: this file is not built and also runs on old Android phones.
 // Name, colours and icons must match /manifest.webmanifest.

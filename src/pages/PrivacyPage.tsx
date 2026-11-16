@@ -44,9 +44,11 @@ export function PrivacyPage() {
               Eure Familie liegt auf unserem Webspace bei all-inkl.com in Deutschland,{' '}
               <strong>unverschlüsselt</strong> in einer Datenbank: die Namen der Kinder, wie ihr sie
               eintragt, das gewählte Tier, wann geputzt wurde (Tag, morgens oder abends, Uhrzeit und
-              Dauer) und die Ton-Einstellungen. Lesen kann das, wer euren Familien-Link hat,
-              außerdem der Betreiber und der Hoster. Der Link selbst liegt auf dem Server nur als
-              Fingerabdruck (SHA-256). Tragt deshalb am besten nur Vornamen oder Spitznamen ein.
+              Dauer) und die Ton-Einstellungen. Lesen kann das, wer euren Familien-Link oder euer
+              Familien-Passwort hat (das sind dieselbe Information: sechs Wörter wie „tanne mond
+              kiesel …“, bei älteren Familien ein langer Zufallscode), außerdem der Betreiber und
+              der Hoster. Der Link und das Passwort liegen auf dem Server nur als Fingerabdruck
+              (SHA-256). Tragt deshalb am besten nur Vornamen oder Spitznamen ein.
             </p>
           </Section>
           <Section title="Belohnungsfotos">

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
 import { ChevronLeft, MoonIcon, SunIcon } from '@/components/icons'
 import { AnimalBadge, AnimalPicker, Button, Card, Toggle, ToothbrushPicker } from '@/components/ui'
+import { isPassphrase, passphraseWords } from '@/features/family/family-key'
 import {
   useFamily,
   useFamilyActions,
@@ -354,13 +355,28 @@ function DevicesSection() {
     <Section title="Weitere Handys">
       <p className="text-sm text-bark-700">
         Öffnet diesen Familien-Link auf jedem Handy, das mitmachen soll. Alle sehen dann dieselben
-        Kinder und dieselbe Woche. Wer den Link hat, kann alles sehen und ändern, also nur in der
-        Familie weitergeben und am besten im Passwortmanager speichern.
+        Kinder und dieselbe Woche. Wer den Link oder das Passwort hat, kann alles sehen und ändern,
+        also nur in der Familie weitergeben und am besten im Passwortmanager speichern.
       </p>
       <p className="text-sm text-bark-700">
         Auf iPhone und iPad: Den Link in Safari öffnen, dann „Teilen“ → „Zum Home-Bildschirm“. Die
         App auf dem Home-Bildschirm ist dann gleich mit eurer Familie verbunden.
       </p>
+      {familyKey && isPassphrase(familyKey) && (
+        <div className="flex flex-col gap-1 rounded-2xl bg-moss-50 px-4 py-3">
+          <p className="text-sm font-bold text-moss-800">Familien-Passwort</p>
+          <p className="flex flex-wrap gap-x-3 gap-y-1 text-2xl font-extrabold leading-snug text-bark-800">
+            {passphraseWords(familyKey).map((word, index) => (
+              <span key={`${index}-${word}`}>{word}</span>
+            ))}
+          </p>
+          <p className="text-sm text-bark-700">
+            Zum Eintippen auf einem anderen Gerät: auf dem Startbildschirm „Ihr nutzt die App schon
+            auf einem anderen Handy?“ öffnen und die Wörter eingeben. Groß- und Kleinschreibung und
+            Leerzeichen sind egal.
+          </p>
+        </div>
+      )}
       <input
         readOnly
         value={link}
@@ -403,6 +419,14 @@ function DevicesSection() {
           </button>
         )}
       </p>
+      {familyKey && !isPassphrase(familyKey) && (
+        <p className="rounded-2xl bg-moss-50 px-4 py-3 text-sm text-bark-700">
+          Euer Familien-Link ist noch ein langer Zufallscode. Mit „Neuen Link erzeugen“ bekommt ihr
+          stattdessen ein Passwort aus Wörtern, das sich gut vorlesen und eintippen lässt. Der alte
+          Link geht dann auf allen Handys nicht mehr, dort müsst ihr den neuen Link oder das
+          Passwort eingeben.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 border-t-2 border-bark-100 pt-4">
         <Button variant="secondary" onClick={() => void renew()}>
           Neuen Link erzeugen

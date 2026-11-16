@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Button, Card } from '@/components/ui'
+import { familyKeyFromInput } from '@/features/family/family-key'
 import { useFamily, useFamilyActions, useSyncStatus } from '@/features/family/family-store'
 import { activeKids } from '@/features/family/queries'
 import { Animal } from '@/features/forest/Animal'
@@ -12,13 +13,6 @@ const CREATE_ERRORS = {
   full: 'Auf dem Server ist gerade kein Platz für neue Familien.',
   offline: 'Keine Verbindung zum Server. Bitte später noch einmal versuchen.',
 } as const
-
-/** The key out of a pasted family link (or the bare key). */
-function keyFromLink(value: string): string | null {
-  const match = /key=([^&\s]+)/.exec(value)
-  const key = match?.[1] ? decodeURIComponent(match[1]) : value.trim()
-  return key.length >= 16 ? key : null
-}
 
 /**
  * Shown whenever this device has no (valid) family link. There is no local-only mode: a family
@@ -35,7 +29,7 @@ export function StartScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [link, setLink] = useState('')
-  const linkKey = keyFromLink(link)
+  const linkKey = familyKeyFromInput(link)
 
   return (
     <main className="flex h-full touch-manipulation overflow-y-auto bg-moss-800 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))]">
@@ -103,13 +97,14 @@ export function StartScreen() {
           <div className="mt-3 flex flex-col gap-2">
             <p className="text-sm text-bark-700">
               Dann öffnet auf diesem Gerät einfach euren Familien-Link. Ihr findet ihn auf dem
-              anderen Handy unter „Für Eltern“ → „Weitere Handys“. Oder fügt ihn hier ein:
+              anderen Handy unter „Für Eltern“ → „Weitere Handys“. Oder gebt hier das
+              Familien-Passwort ein (Wörter wie „tanne mond kiesel …“) oder fügt den Link ein:
             </p>
             <input
               value={link}
               onChange={(e) => setLink(e.target.value)}
-              placeholder="https://brush.ingsparks.de/#key=…"
-              aria-label="Familien-Link"
+              placeholder="Familien-Link oder Familien-Passwort"
+              aria-label="Familien-Link oder Familien-Passwort"
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}

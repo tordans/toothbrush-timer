@@ -6,7 +6,14 @@ export const BASE = `http://localhost:${process.env.BRUSH_API_PORT ?? 8088}`
 export const INVITE = 'dev-invite'
 
 export const ISO_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-export const KEY_FORMAT = /^[A-Za-z0-9_-]{43}$/
+/** New family keys: six lowercase words joined by '-'. */
+export const KEY_FORMAT = /^[a-z]+(?:-[a-z]+){5}$/
+/** Keys made before passphrases existed: 32 random bytes as 43 base64url characters. */
+export const OLD_KEY_FORMAT = /^[A-Za-z0-9_-]{43}$/
+
+/** A random key in the old format, as real families still have. */
+export const makeOldKey = () =>
+  Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url')
 
 const composeFile = path.join(import.meta.dir, 'compose.yml')
 

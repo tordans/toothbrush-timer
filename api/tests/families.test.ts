@@ -5,6 +5,8 @@ import {
   createFamilyRequest,
   ISO_MS,
   KEY_FORMAT,
+  makeOldKey,
+  OLD_KEY_FORMAT,
   resetAll,
   sha256,
   sql,
@@ -20,6 +22,47 @@ describe('POST /api/families', () => {
     expect(Object.keys(res.json)).toEqual(['key'])
     expect(res.json.key).toMatch(KEY_FORMAT)
     expect(res.headers.get('cache-control')).toBe('no-store')
+  })
+
+  test('the new key is a phrase of lowercase words, not a random string', async () => {
+    const key = await createFamily()
+    expect(key).toMatch(KEY_FORMAT)
+    expect(key).not.toMatch(OLD_KEY_FORMAT)
+    expect(key.split('-')).toHaveLength(6)
+  })
+
+  test('a family with an old random key keeps working next to phrase families', async () => {
+    const oldKey = makeOldKey()
+    expect(oldKey).toMatch(OLD_KEY_FORMAT)
+    sql(
+      `INSERT INTO families (key_sha256, created_at) VALUES ('${sha256(oldKey)}', UTC_TIMESTAMP(3))`,
+    )
+    const phraseKey = await createFamily()
+
+    // reading and writing with the old key works as before
+    expect((await api('/api/state', { key: oldKey })).json).toEqual({
+      data: null,
+      version: 0,
+      updated_at: null,
+    })
+    const put = await api('/api/state', {
+      method: 'PUT',
+      key: oldKey,
+      headers: { 'If-Match': '"0"' },
+      body: { data: { old: true } },
+    })
+    expect(put.status).toBe(200)
+    expect((await api('/api/state', { key: oldKey })).json.data).toEqual({ old: true })
+    // and the two families stay apart
+    expect((await api('/api/state', { key: phraseKey })).json.data).toBeNull()
+  })
+
+  test('the phrase in normalized form authenticates; other spellings do not', async () => {
+    const key = await createFamily()
+    expect((await api('/api/state', { key })).status).toBe(200)
+    // The server compares the exact string. Normalizing (case, spaces, dots) is the app's job.
+    expect((await api('/api/state', { key: key.toUpperCase() })).status).toBe(401)
+    expect((await api('/api/state', { key: key.replaceAll('-', '.') })).status).toBe(401)
   })
 
   test('the new key works and the family is empty', async () => {

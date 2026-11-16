@@ -100,17 +100,28 @@ function schedulePush() {
   pushTimer = setTimeout(() => void syncNow(), PUSH_DELAY_MS)
 }
 
-/** Reads `#key=…` from the link, stores it and removes it from the address bar. */
+/**
+ * Reads `#key=…` from the link, stores it and removes it from the address bar. The key is a
+ * passphrase (`tanne-mond-…`) or an old random key; both are taken over exactly as written.
+ */
 function takeKeyFromLocation() {
   const match = /(?:^#|&)key=([^&]+)/.exec(window.location.hash)
   if (!match?.[1]) return
-  const key = decodeURIComponent(match[1])
+  const key = decodeKey(match[1])
   const current = familyStore.getState().familyKey
   // A Home Screen icon starts with the key from the day it was added (see public/home-screen.js).
   // Once the app there has a key, that old one must not replace a newer family link.
   const homeScreenApp = window.matchMedia('(display-mode: standalone)').matches
   if (current !== key && !(homeScreenApp && current)) familyStore.getState().actions.connect(key)
   history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
+function decodeKey(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 export function startSync() {

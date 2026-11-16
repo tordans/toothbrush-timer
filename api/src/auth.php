@@ -85,10 +85,29 @@ function key_hash(string $key): string
     return hash('sha256', $key);
 }
 
-/** A new family key: 32 random bytes as base64url (43 characters). */
+const BRUSH_PASSPHRASE_WORDS = 6; // words per new family key
+
+/**
+ * A new family key: a passphrase of random German words joined by '-', e.g. "tanne-mond-kiesel-...".
+ * It is the one and only secret of the family (the same string goes into the link after #key=), but
+ * a parent can read it out and type it on another device. 6 words from a list of 1000+ are about
+ * 60 bits; wrong keys are throttled per IP (see throttle_check), so guessing is not feasible.
+ * Words are drawn independently with the CSPRNG, so the entropy is exactly words * log2(list size).
+ *
+ * Keys made before this change are 43 random base64url characters. They are still looked up by the
+ * same SHA-256 and keep working: nothing in require_family() depends on the format.
+ */
 function generate_key(): string
 {
-    return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+    /** @var list<string> $words */
+    static $words = null;
+    $words ??= require __DIR__ . '/wordlist.php';
+    $last = count($words) - 1;
+    $picked = [];
+    for ($i = 0; $i < BRUSH_PASSPHRASE_WORDS; $i++) {
+        $picked[] = $words[random_int(0, $last)];
+    }
+    return implode('-', $picked);
 }
 
 /**

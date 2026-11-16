@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
-import { api, createFamily, KEY_FORMAT, resetAll, sha256, sql } from './helpers'
+import { api, createFamily, KEY_FORMAT, makeOldKey, resetAll, sha256, sql } from './helpers'
 
 beforeAll(resetAll)
 
@@ -61,6 +61,22 @@ describe('POST /api/family/key', () => {
 
     // the other family is not affected
     expect((await api('/api/state', { key: other })).status).toBe(200)
+  })
+
+  test('an old random key can be renewed and gets a phrase', async () => {
+    await resetAll()
+    const oldKey = makeOldKey()
+    sql(
+      `INSERT INTO families (key_sha256, created_at) VALUES ('${sha256(oldKey)}', UTC_TIMESTAMP(3))`,
+    )
+    expect((await api('/api/state', { key: oldKey })).status).toBe(200)
+
+    const res = await renew(oldKey)
+    expect(res.status).toBe(200)
+    const phrase = res.json.key as string
+    expect(phrase).toMatch(KEY_FORMAT)
+    expect((await api('/api/state', { key: oldKey })).status).toBe(401)
+    expect((await api('/api/state', { key: phrase })).status).toBe(200)
   })
 
   test('only the digest of the new key is stored', async () => {

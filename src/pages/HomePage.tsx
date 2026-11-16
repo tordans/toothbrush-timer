@@ -24,6 +24,7 @@ import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
+import { ParentGateDialog } from '@/features/parent-gate/ParentGateDialog'
 import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { useElementSize } from '@/hooks/use-element-size'
 import { useNow } from '@/hooks/use-now'
@@ -47,6 +48,8 @@ export function HomePage() {
 
   const [chosenSlot, setChosenSlot] = useState<Slot | null>(null)
   const [pickingAnimal, setPickingAnimal] = useState(false)
+  // Holding the gear only opens the parent gate; /eltern comes after the right animal is tapped.
+  const [gateOpen, setGateOpen] = useState(false)
   const slot = chosenSlot ?? slotForTime(now)
   const light = dayLightForSlot(slot, now)
   useThemeColor(SKY[light][0])
@@ -179,7 +182,7 @@ export function HomePage() {
             </div>
             <div className="flex items-center gap-2">
               <HoldButton
-                onHold={openParents}
+                onHold={() => setGateOpen(true)}
                 label={
                   photo.needsNewPhotos
                     ? 'Eltern: Bitte neue Fotos hochladen. Gedrückt halten'
@@ -237,6 +240,8 @@ export function HomePage() {
           onClose={() => setPickingAnimal(false)}
         />
       )}
+
+      {gateOpen && <ParentGateDialog onPass={openParents} onClose={() => setGateOpen(false)} />}
     </main>
   )
 }

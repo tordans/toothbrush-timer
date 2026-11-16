@@ -39,10 +39,10 @@ local development uses the Vite proxy.
 | Request                | Needs               | Answer                                                                                        |
 | ---------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
 | `GET /api/health`      | nothing             | `{ ok, commit }`. Does not use the database.                                                  |
-| `POST /api/families`   | invite word in body | Body `{ "invite": "<word>" }`. `201 { key }`: the new family key, shown only this once.       |
+| `POST /api/families`   | invite word in body | Body `{ "invite": "<word>" }`. `201 { key }`: the new family key (a passphrase), shown once.  |
 | `GET /api/state`       | family key          | `{ data, version, updated_at }`. New family: `data: null`, `version: 0`, `updated_at: null`.  |
 | `PUT /api/state`       | family key          | Header `If-Match: "<version>"`, body `{ "data": { ... } }`. Answer `{ version, updated_at }`. |
-| `POST /api/family/key` | family key          | `200 { key }`: a new key. The old key stops working at once.                                  |
+| `POST /api/family/key` | family key          | `200 { key }`: a new passphrase. The old key stops working at once.                           |
 
 Errors for `/api/state` and `/api/family/key`: `401` wrong or missing key, `428` missing
 `If-Match`, `409` version conflict (the body has the current `data`, `version`, `updated_at`),
@@ -61,7 +61,8 @@ Delete a family (below) to make room.
 
 Wrong family keys are counted per IP address, separately from wrong invite words. After 20 wrong
 keys within 10 minutes the address gets `429` for the rest of the window (even with a right key).
-Requests without any key are not counted.
+Requests without any key are not counted. This limit is what makes the short passphrase keys safe
+(see "Invite word, family link and key"): at most 20 guesses per 10 minutes and address.
 
 The API creates and updates its database tables itself, before the first request that needs the
 database (see "Database changes"). `GET /api/health` never touches the database, so it also answers
@@ -140,12 +141,32 @@ The **invite word** is chosen by the owner and only given to people who may star
 server stores only its SHA-256 (in `config/config.php`, outside the document root) and compares it
 with `hash_equals`. Hand it out in person, not in public places.
 
-Someone who enters the invite word in the app gets a new **family key**: 32 random bytes, written
-as 43 URL-safe characters, made by the server. The family link is
+Someone who enters the invite word in the app gets a new **family key**, made by the server. The
+key is a **passphrase**: six random German words joined by `-`, for example
+`tanne-mond-kiesel-fuchs-wiese-igel`. The words come from the list in `api/src/wordlist.php`
+(1030 short, lowercase ASCII nouns without umlauts or sharp s, easy to read out and to spell),
+drawn independently with `random_int` (a CSPRNG). That is 6 * log2(1030), about 60 bits. With at
+most 20 wrong guesses per 10 minutes and IP address and at most 100 families, guessing a phrase is
+not feasible.
+
+The passphrase **is** the key: the same string is the secret in the link and the one a parent reads
+out and types on another device. There is no second secret. The family link is
 `https://brush.ingsparks.de/#key=<key>`. The key stands after `#`, so browsers never send it to the
 web server in a page request and it does not end up in server logs or the `Referer` header. Only
 the app's own API calls carry it, in the `Authorization` header. The server stores only the SHA-256
 of the key, so even the owner of the server cannot read a key back. A lost key cannot be recovered.
+
+**Two key formats exist.** Families created before passphrases have a random key of 32 bytes, written
+as 43 URL-safe characters (base64url). The server does not look at the format: it hashes whatever
+comes in the `Authorization` header and looks the hash up. So old keys keep working unchanged, and
+new keys are just a different string. Only a renewal (below) turns an old key into a passphrase.
+The server compares the exact string; typing aids belong to the app: on the start screen the typed
+passphrase is normalized (trimmed, lowercased, spaces, commas and dots become `-`, repeats collapse)
+before it is sent. A pasted link or an old key is passed on exactly as it is.
+
+Changing the word list is safe for existing families: their phrase is only stored as a hash and is
+never matched against the list again. Keep the rules at the top of the file (lowercase a-z, 3 to 8
+letters, no duplicates, no homophones). If the list grows or shrinks, update the bit count here.
 
 Do not post a family link in public places. Whoever has it can read and change that family's
 state, and only that family's.
@@ -153,8 +174,10 @@ state, and only that family's.
 ### Renew a family link
 
 If a link leaks, the family renews it in the app. The app calls `POST /api/family/key` with the
-current key and shows the new link. The old link stops working at once; the stored data stays.
-Devices that still use the old link get `401` and have to be opened with the new link.
+current key and shows the new link and the new passphrase. The answer is always a passphrase, even
+if the family had an old random key (this is how families move to passphrases, and the app tells
+them so). The old link stops working at once; the stored data stays. Devices that still use the old
+link get `401` and have to be opened with the new link or the new passphrase.
 
 ### Delete a family by hand
 
