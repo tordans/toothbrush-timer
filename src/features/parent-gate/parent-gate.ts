@@ -5,7 +5,7 @@ import { ANIMALS, type Animal } from '@/features/family/schema'
  * understands asks for one animal by a feature, never by name. Each feature belongs to exactly
  * one of the seven animals and is not something a small child can guess from the drawing alone.
  */
-const INTRO = 'Damit wir wissen, dass hier ein Erwachsener tippt: Bitte tippe auf das Tier,'
+const INTRO = 'Bitte tippe auf das Tier,'
 
 const FEATURES: Record<Animal, string> = {
   fox: 'das in Fabeln als schlau und listig gilt und im Winter mit einem hohen Sprung kopfüber in den Schnee taucht.',

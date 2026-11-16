@@ -29,7 +29,14 @@ export function ParentGateDialog({ onPass, onClose }: { onPass: () => void; onCl
     >
       <Card className="m-auto flex w-full max-w-xl animate-fadein flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-lg font-bold text-bark-900 sm:text-xl">{question.text}</p>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-sm font-extrabold uppercase tracking-wide text-moss-600">
+              Nur für Eltern
+            </h2>
+            <p className="text-sm text-bark-600">
+              Damit wir wissen, dass hier ein Erwachsener tippt, eine kleine Frage:
+            </p>
+          </div>
           <button
             type="button"
             aria-label="Schließen"
@@ -39,6 +46,9 @@ export function ParentGateDialog({ onPass, onClose }: { onPass: () => void; onCl
             <CloseIcon className="h-6 w-6" />
           </button>
         </div>
+        <p className="border-t-2 border-bark-100 pt-4 text-lg font-bold text-bark-900 sm:text-xl">
+          {question.text}
+        </p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           {animals.map((animal, index) => (
             <button

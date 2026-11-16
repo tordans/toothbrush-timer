@@ -52,6 +52,11 @@ export function HomePage() {
   const [gateOpen, setGateOpen] = useState(false)
   const slot = chosenSlot ?? slotForTime(now)
   const light = dayLightForSlot(slot, now)
+  // Name and week stand right on the sky: dark text by day, light text in the evening and at night.
+  const labelColor =
+    light === 'evening' || light === 'night'
+      ? 'text-cream [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]'
+      : 'text-bark-900 [text-shadow:0_1px_2px_rgb(255_255_255/0.6)]'
   useThemeColor(SKY[light][0])
 
   const today = isoDay(now)
@@ -128,7 +133,12 @@ export function HomePage() {
                   <AnimalBadge animal={kid.animal} className="h-12 w-12 bg-white" />
                 </button>
                 {/* The name is only a label. */}
-                <span className="min-w-0 self-center truncate rounded-full bg-cream/80 px-3 py-1 text-lg font-extrabold text-bark-900">
+                <span
+                  className={twMerge(
+                    'min-w-0 self-center truncate text-xl font-extrabold',
+                    labelColor,
+                  )}
+                >
                   {kid.name}
                 </span>
               </>
@@ -153,7 +163,7 @@ export function HomePage() {
           <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
             <div className="flex items-center gap-1.5">
               {/* Which days the forest shows, as a plain label next to the arrows. */}
-              <span className="rounded-full bg-cream/80 px-2.5 py-1 text-xs font-bold text-bark-900 sm:text-sm">
+              <span className={twMerge('text-sm font-extrabold sm:text-base', labelColor)}>
                 {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
               </span>
               <div className="flex items-center rounded-full bg-cream/90 shadow">
@@ -182,6 +192,7 @@ export function HomePage() {
             </div>
             <div className="flex items-center gap-2">
               <HoldButton
+                ms={500}
                 onHold={() => setGateOpen(true)}
                 label={
                   photo.needsNewPhotos

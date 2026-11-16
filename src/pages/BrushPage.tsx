@@ -355,6 +355,13 @@ function Done({
         <p className="text-xl font-semibold opacity-85">
           Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
         </p>
+        {/* Brushing the same morning or evening again brings no new fields: say so, or the
+            missing photo button looks like a fault. */}
+        {photo.hasWeekPhoto && !photo.hasFieldsLeft && (
+          <p className="text-base font-semibold opacity-75">
+            Die Foto-Felder für {evening ? 'heute Abend' : 'heute Morgen'} sind schon freigemacht.
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-3 landscape:justify-start">
           <Button size="lg" className="text-2xl" onClick={onHome}>
             Zurück in den Wald

@@ -234,7 +234,7 @@ function Status({
   else if (left === 1) text = 'Noch 1 Feld zum Freimachen'
   else if (left > 0) text = `Noch ${left} Felder zum Freimachen`
   else if (earnedNone) text = 'Nach dem Zähneputzen darfst du Felder freimachen'
-  else text = 'Alles freigemacht bis zum nächsten Putzen'
+  else text = 'Alles freigemacht. Neue Felder gibt es beim nächsten Morgen- oder Abendputzen'
 
   const icons = Math.min(left, 8)
   return (
