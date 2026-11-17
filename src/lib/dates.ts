@@ -7,9 +7,12 @@ export function isoDay(date: Date): string {
   return format(date, 'yyyy-MM-dd')
 }
 
-/** Morning until 14:00, evening after. The start screen lets the child switch. */
+/**
+ * Morning until 15:00, evening after. Children cannot choose: brushing twice in one morning would
+ * otherwise use up the evening's photo fields. A missed brushing is entered by a parent.
+ */
 export function slotForTime(date: Date): Slot {
-  return date.getHours() < 14 ? 'morning' : 'evening'
+  return date.getHours() < 15 ? 'morning' : 'evening'
 }
 
 /** Seven days with `date` in the middle (three before, three after), shifted by `offset` weeks. */

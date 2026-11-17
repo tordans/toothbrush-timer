@@ -1,4 +1,5 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
+import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
 import { twMerge } from 'tailwind-merge'
 import {
@@ -11,7 +12,8 @@ import {
 } from '@/components/icons'
 import { Button, Card } from '@/components/ui'
 import { familyStore, useFamily, useFamilyActions } from '@/features/family/family-store'
-import type { Animal as AnimalId } from '@/features/family/schema'
+import { brushingsFor } from '@/features/family/queries'
+import type { Animal as AnimalId, Brushing } from '@/features/family/schema'
 import { Animal } from '@/features/forest/Animal'
 import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
 import { ThoughtBubble } from '@/features/photos/ThoughtBubble'
@@ -49,6 +51,13 @@ export function BrushPage() {
 
   // Date of the brushing is fixed when the page opens (brushing across midnight stays "today").
   const [date] = useState(() => isoDay(new Date()))
+  // The earlier brushing of this morning or evening, if any, as it was when the page opened.
+  const [earlier] = useState(
+    () =>
+      brushingsFor(familyStore.getState().family, kidId, date, slot).sort((a, b) =>
+        a.at < b.at ? -1 : 1,
+      )[0],
+  )
   const [askStop, setAskStop] = useState(false)
   const recorded = useRef(false)
 
@@ -189,6 +198,7 @@ export function BrushPage() {
           kidId={kid.id}
           animal={kid.animal}
           evening={evening}
+          earlier={earlier}
           onHome={() => void navigate({ to: '/' })}
           onPhoto={(week) => void navigate({ to: '/foto', search: { week, kid: kid.id } })}
         />
@@ -310,12 +320,14 @@ function Done({
   kidId,
   animal,
   evening,
+  earlier,
   onHome,
   onPhoto,
 }: {
   kidId: string
   animal: AnimalId
   evening: boolean
+  earlier: Brushing | undefined
   onHome: () => void
   onPhoto: (week: string) => void
 }) {
@@ -358,9 +370,7 @@ function Done({
         {/* Brushing the same morning or evening again brings no new fields: say so, or the
             missing photo button looks like a fault. */}
         {photo.hasWeekPhoto && !photo.hasFieldsLeft && (
-          <p className="text-base font-semibold opacity-75">
-            Die Foto-Felder für {evening ? 'heute Abend' : 'heute Morgen'} sind schon freigemacht.
-          </p>
+          <p className="text-base font-semibold opacity-75">{repeatHint(evening, earlier)}</p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-3 landscape:justify-start">
           <Button size="lg" className="text-2xl" onClick={onHome}>
@@ -454,4 +464,16 @@ function Sparkles() {
       ))}
     </div>
   )
+}
+
+/** Why a repeated brushing brings no new fields: says when this morning or evening was brushed. */
+function repeatHint(evening: boolean, earlier: Brushing | undefined): string {
+  const when = evening ? 'Heute Abend' : 'Heute Morgen'
+  if (!earlier)
+    return `Die Foto-Felder für ${evening ? 'heute Abend' : 'heute Morgen'} sind schon freigemacht.`
+  if (earlier.source === 'manual') {
+    return `${when} ist schon als geputzt eingetragen. Die Foto-Felder dafür sind schon frei.`
+  }
+  const time = format(new Date(earlier.at), 'H:mm')
+  return `${when} hast du schon um ${time} Uhr geputzt. Die Foto-Felder dafür sind schon frei.`
 }

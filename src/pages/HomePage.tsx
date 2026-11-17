@@ -8,8 +8,6 @@ import {
   ChevronRight,
   FrameIcon,
   GearIcon,
-  MoonIcon,
-  SunIcon,
 } from '@/components/icons'
 import {
   AnimalBadge,
@@ -21,7 +19,7 @@ import {
 } from '@/components/ui'
 import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { activeKids, isBrushed } from '@/features/family/queries'
-import type { Animal as AnimalId, Slot, Toothbrush } from '@/features/family/schema'
+import type { Animal as AnimalId, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
 import { ParentGateDialog } from '@/features/parent-gate/ParentGateDialog'
@@ -46,11 +44,10 @@ export function HomePage() {
   const kids = activeKids(family)
   const kid = kids.find((k) => k.id === activeKidId) ?? kids[0]
 
-  const [chosenSlot, setChosenSlot] = useState<Slot | null>(null)
   const [pickingAnimal, setPickingAnimal] = useState(false)
   // Holding the gear only opens the parent gate; /eltern comes after the right animal is tapped.
   const [gateOpen, setGateOpen] = useState(false)
-  const slot = chosenSlot ?? slotForTime(now)
+  const slot = slotForTime(now)
   const light = dayLightForSlot(slot, now)
   // Name and week stand right on the sky: dark text by day, light text in the evening and at night.
   const labelColor =
@@ -219,10 +216,6 @@ export function HomePage() {
       {/* bottom: start brushing (below the forest, so it never hides a day) */}
       {kid ? (
         <div className="flex shrink-0 flex-col items-center justify-center gap-x-5 gap-y-2 bg-moss-800 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 landscape:flex-row landscape:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="flex rounded-full bg-cream p-1 shadow-lg" role="radiogroup">
-            <SlotButton slot="morning" active={slot === 'morning'} onClick={setChosenSlot} />
-            <SlotButton slot="evening" active={slot === 'evening'} onClick={setChosenSlot} />
-          </div>
           <Button
             size="lg"
             className="text-2xl"
@@ -254,36 +247,6 @@ export function HomePage() {
 
       {gateOpen && <ParentGateDialog onPass={openParents} onClose={() => setGateOpen(false)} />}
     </main>
-  )
-}
-
-function SlotButton({
-  slot,
-  active,
-  onClick,
-}: {
-  slot: Slot
-  active: boolean
-  onClick: (slot: Slot) => void
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      onClick={() => onClick(slot)}
-      className={twMerge(
-        'flex min-h-11 items-center gap-2 rounded-full px-5 py-2 text-lg font-extrabold transition active:scale-95',
-        active
-          ? slot === 'morning'
-            ? 'bg-sun text-bark-900'
-            : 'bg-dusk text-white'
-          : 'text-bark-600',
-      )}
-    >
-      {slot === 'morning' ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-5 w-5" />}
-      {slot === 'morning' ? 'Morgens' : 'Abends'}
-    </button>
   )
 }
 

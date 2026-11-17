@@ -72,10 +72,10 @@ describe('clockLabel', () => {
 })
 
 describe('dates', () => {
-  it('picks morning before 14:00 and evening after', () => {
+  it('picks morning before 15:00 and evening after', () => {
     expect(slotForTime(new Date(2026, 10, 5, 7, 0))).toBe('morning')
-    expect(slotForTime(new Date(2026, 10, 5, 13, 59))).toBe('morning')
-    expect(slotForTime(new Date(2026, 10, 5, 14, 0))).toBe('evening')
+    expect(slotForTime(new Date(2026, 10, 5, 14, 59))).toBe('morning')
+    expect(slotForTime(new Date(2026, 10, 5, 15, 0))).toBe('evening')
   })
 
   it('puts today in the middle of seven days', () => {
