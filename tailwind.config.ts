@@ -39,13 +39,13 @@ export default {
         night: '#1f2347',
       },
       keyframes: {
+        scrub: {
+          '0%, 100%': { transform: 'translateX(-1.5px)' },
+          '50%': { transform: 'translateX(1.5px)' },
+        },
         bob: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-6px)' },
-        },
-        brush: {
-          '0%, 100%': { transform: 'rotate(-8deg)' },
-          '50%': { transform: 'rotate(8deg)' },
         },
         glow: {
           '0%, 100%': { opacity: '0.55' },
@@ -87,7 +87,7 @@ export default {
       },
       animation: {
         bob: 'bob 3s ease-in-out infinite',
-        brush: 'brush 0.5s ease-in-out infinite',
+        scrub: 'scrub 0.35s ease-in-out infinite',
         glow: 'glow 3s ease-in-out infinite',
         hop: 'hop 0.9s ease-in-out 4',
         blink: 'blink 0.8s ease-in-out infinite',

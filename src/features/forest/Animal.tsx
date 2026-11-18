@@ -12,18 +12,23 @@ export const ANIMAL_NAMES: Record<AnimalId, string> = {
 
 type Props = {
   animal: AnimalId
-  /** Holds a toothbrush that moves (brushing screen). */
-  brushing?: boolean
+  /**
+   * Brushes the upper or lower teeth (brushing screen). The animal is the child's mirror image:
+   * the brush head sits in the mouth corner on screen left, held by the paw on screen right, as
+   * a child brushes the left side with the right hand. The brushing screen flips the animal for
+   * the right side.
+   */
+  brushing?: 'top' | 'bottom'
   className?: string
 }
 
 /** Our own forest animals, drawn in a 100×100 box, sitting and facing the viewer. */
-export function Animal({ animal, brushing = false, className }: Props) {
+export function Animal({ animal, brushing, className }: Props) {
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
       {ANIMAL_ART[animal]}
       <Eyes animal={animal} />
-      {brushing && <Toothbrush />}
+      {brushing && <Toothbrush animal={animal} jaw={brushing} />}
     </svg>
   )
 }
@@ -83,14 +88,54 @@ function Smile({ y, w = 4 }: { y: number; w?: number }) {
   )
 }
 
-function Toothbrush() {
+/** Middle of the mouth (where the smile is) and the colour of the paw that holds the brush. */
+const MOUTH: Record<AnimalId, { x: number; y: number; paw: string }> = {
+  fox: { x: 50, y: 58, paw: '#5b3523' },
+  hedgehog: { x: 50, y: 64, paw: '#a07a55' },
+  owl: { x: 50, y: 48, paw: '#7d5a3c' },
+  rabbit: { x: 50, y: 59, paw: '#bfb2a5' },
+  squirrel: { x: 46, y: 55, paw: '#8e4322' },
+  bear: { x: 50, y: 55, paw: '#6f462d' },
+  koala: { x: 50, y: 59, paw: '#5f646a' },
+}
+
+function Toothbrush({ animal, jaw }: { animal: AnimalId; jaw: 'top' | 'bottom' }) {
+  const { x, y, paw } = MOUTH[animal]
+  const top = jaw === 'top'
+  // Head just inside the left mouth corner, a little above or below the smile.
+  const hx = x - 9
+  const hy = top ? y - 3 : y + 4
+  // The handle runs down to the right, to the paw below the other mouth corner.
+  const px = x + 20
+  const py = y + 12
+  const angle = (Math.atan2(py - hy, px - hx) * 180) / Math.PI
+  const length = Math.hypot(px - hx, py - hy) + 6
   return (
-    <g className="origin-[62px_60px] animate-brush">
-      <rect x="60" y="56" width="30" height="5" rx="2.5" fill="#5aa9c9" />
-      <rect x="56" y="54.5" width="7" height="8" rx="1.5" fill="#f4fbff" />
-      {[57, 59, 61].map((x) => (
-        <rect key={x} x={x} y="51" width="1.3" height="4" rx="0.6" fill="#f4fbff" />
-      ))}
+    <g className="animate-scrub">
+      <g transform={`translate(${hx} ${hy}) rotate(${angle})`}>
+        <rect x="2" y="-2.2" width={length} height="4.4" rx="2.2" fill="#5aa9c9" />
+        <rect x="-3.5" y="-3.5" width="8" height="7" rx="1.5" fill="#f4fbff" />
+        {/* bristles towards the teeth: up for the upper jaw, down for the lower */}
+        {[-2.5, 0, 2.5].map((bx) => (
+          <rect
+            key={bx}
+            x={bx - 0.6}
+            y={top ? -7 : 3.5}
+            width="1.2"
+            height="3.5"
+            rx="0.6"
+            fill="#f4fbff"
+          />
+        ))}
+      </g>
+      <ellipse cx={px} cy={py} rx="5.5" ry="4.5" fill={paw} stroke="#2b2118" strokeOpacity="0.25" />
+      <path
+        d={`M${px - 3} ${py - 2.5} v5 M${px} ${py - 3} v6 M${px + 3} ${py - 2.5} v5`}
+        stroke="#2b2118"
+        strokeOpacity="0.3"
+        strokeWidth="0.8"
+        strokeLinecap="round"
+      />
     </g>
   )
 }

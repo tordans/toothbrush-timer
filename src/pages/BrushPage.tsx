@@ -227,7 +227,9 @@ export function BrushPage() {
                 >
                   <Animal
                     animal={kid.animal}
-                    brushing={timer.phase === 'running' && !position.switching}
+                    brushing={
+                      timer.phase === 'running' && !position.switching ? corner?.jaw : undefined
+                    }
                   />
                 </div>
               </div>
