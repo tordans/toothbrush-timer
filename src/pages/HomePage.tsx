@@ -149,7 +149,7 @@ export function HomePage() {
                   type="button"
                   aria-label={`${k.name} auswählen`}
                   onClick={() => setActiveKid(k.id)}
-                  className="flex min-w-0 max-w-full cursor-pointer select-none items-center gap-2 rounded-full bg-white/40 py-1 pl-1 pr-3 text-lg font-extrabold text-bark-900/70 shadow transition active:scale-95"
+                  className="flex min-w-0 max-w-full cursor-pointer select-none items-center gap-2 rounded-full bg-cream/75 py-1 pl-1 pr-3 text-lg font-extrabold text-bark-800 shadow transition active:scale-95"
                 >
                   <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
                   <span className="truncate">{k.name}</span>
@@ -158,26 +158,27 @@ export function HomePage() {
           </div>
           {/* on narrow screens the gear sits above the week switch */}
           <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
-            <div className="flex items-center gap-1.5">
-              {/* Which days the forest shows, as a plain label next to the arrows. */}
-              <span className={twMerge('text-sm font-extrabold sm:text-base', labelColor)}>
-                {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
-              </span>
-              <div className="flex items-center rounded-full bg-cream/90 shadow">
+            <div className="flex items-center">
+              {/* Which days the forest shows, between the arrows on one cream pill, so it stays
+                  readable on any sky; the arrows are full 44 px touch targets. */}
+              <div className="flex items-center rounded-full bg-cream/90 text-bark-800 shadow">
                 <button
                   type="button"
                   aria-label="Woche davor"
-                  className="cursor-pointer select-none p-2 transition active:scale-90"
+                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90"
                   onClick={() =>
                     void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
                   }
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
+                <span className="whitespace-nowrap text-sm font-extrabold sm:text-base">
+                  {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
+                </span>
                 <button
                   type="button"
                   aria-label="Woche danach"
-                  className="cursor-pointer select-none p-2 transition active:scale-90 disabled:opacity-30"
+                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90 disabled:opacity-30"
                   disabled={week === 0}
                   onClick={() =>
                     void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
