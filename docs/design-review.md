@@ -11,23 +11,7 @@ was not running. Only its empty state was checked.
 
 Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
 
-<<<<<<< HEAD
-## 1. Forest: the active child has no pill, the others do
-
-- **Screen:** forest, top bar (`HomePage.tsx`).
-- **Problem:** the child who brushes now is shown as a bare badge and a name on the sky, while
-  every other child sits on a cream pill. The eye goes to the child who is _not_ selected,
-  especially in the evening, where the active name is white text on purple and the others are
-  cream pills.
-- **Proposal:** turn it around. The active child gets the filled cream pill (badge + name, a bit
-  larger), the others shrink to a round animal badge without the name, still 48 px. A child
-  recognises their animal; the name is for parents.
-- **Effort:** S.
-
-## 2. Brushing on a tablet: small type, empty lower third
-=======
 ## 1. Brushing on a tablet: small type, empty lower third
->>>>>>> claude/design-review-3937b8
 
 - **Screen:** brushing, before, during and after (`BrushPage.tsx`), iPad portrait.
 - **Problem:** the dial grows with the screen but the text does not: "Ben · Abends", the
@@ -38,11 +22,7 @@ Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
   corner stays on screen.
 - **Effort:** S.
 
-<<<<<<< HEAD
-## 3. "Fertig": the reward moment is small
-=======
 ## 2. "Fertig": the reward moment is small
->>>>>>> claude/design-review-3937b8
 
 - **Screen:** brushing, done (`BrushPage.tsx`).
 - **Problem:** the end of brushing is the one moment the child waits for, but it is a small lantern
@@ -52,15 +32,10 @@ Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
   as in the forest) grows in large, lights up once, the animal hops next to it. No stars, no
   counting, nothing more than the forest already shows. Needs a still fallback for reduced motion.
 - **Effort:** M.
-<<<<<<< HEAD
 - **Built** (November 2026), with a celebration of its own for each animal; see "The 'Fertig!'
   moment" in [animals.md](animals.md).
 
-## 4. Calendar on a tablet: a small card in a dark field
-=======
-
 ## 3. Calendar on a tablet: a small card in a dark field
->>>>>>> claude/design-review-3937b8
 
 - **Screen:** calendar (`OverviewPage.tsx`), iPad landscape.
 - **Problem:** the month is a 576 px card in the middle of a 1024 px dark green screen; the day
@@ -70,11 +45,7 @@ Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
   calendar feels part of the same place.
 - **Effort:** M.
 
-<<<<<<< HEAD
-## 5. Start screen: the forest is missing
-=======
 ## 4. Start screen: the forest is missing
->>>>>>> claude/design-review-3937b8
 
 - **Screen:** start (`StartScreen.tsx`).
 - **Problem:** the first thing a family sees is a cream form on flat dark green. The most
@@ -84,11 +55,7 @@ Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
   sitting at the card's edge. No new copy.
 - **Effort:** M.
 
-<<<<<<< HEAD
-## 6. Parents' area: layout ideas for the tab split
-=======
 ## 5. Parents' area: layout ideas for the tab split
->>>>>>> claude/design-review-3937b8
 
 For the main session's split into "Putzen" and "Fotos"; not touched here.
 
@@ -104,11 +71,7 @@ For the main session's split into "Putzen" and "Fotos"; not touched here.
   A quieter outline or text button, with the confirmation it already has, fits the calm tone better.
 - **Effort:** M, together with the split.
 
-<<<<<<< HEAD
-## 7. Parents' question: heading in small capitals
-=======
 ## 6. Parents' question: heading in small capitals
->>>>>>> claude/design-review-3937b8
 
 - **Screen:** parent gate (`ParentGateDialog.tsx`).
 - **Problem:** "NUR FÜR ELTERN" is a small, tracked, all-caps label; the question below carries the
@@ -119,13 +82,10 @@ For the main session's split into "Putzen" and "Fotos"; not touched here.
 
 ## Not proposed, on purpose
 
-<<<<<<< HEAD
-=======
 - **A pill for the active child in the forest.** The app's rule: what is only shown is plain text,
   what can be tapped is a pill or a pill button. The active child's name is a label, so it stays
   text; the other children are buttons, so they are pills. The same rule applies to the week label
   next to the arrows.
->>>>>>> claude/design-review-3937b8
 - **A new typeface.** Nunito's round shapes match the drawings and read well for parents on phones;
   a "distinctive" display face would fight the illustrations.
 - **More motion or decoration on the forest.** The forest already carries the personality; the
