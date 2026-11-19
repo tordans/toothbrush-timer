@@ -5,6 +5,7 @@ import {
   daysWithFieldsLeft,
   fieldsLeft,
   needsNewPhotos,
+  occasionWithoutPhoto,
   photoForWeek,
   photosEnabled,
 } from './rewards'
@@ -30,5 +31,7 @@ export function usePhotoReward(kidId: string | undefined, now: Date) {
     daysWithFields: kidId && left > 0 ? daysWithFieldsLeft(family, kidId, week) : new Set<string>(),
     /** Parents: the next week has no photo left yet. */
     needsNewPhotos: needsNewPhotos(family, photos, week),
+    /** Parents: next week's occasion has no photo kept for it yet. */
+    occasionWithoutPhoto: occasionWithoutPhoto(family, photos, week),
   }
 }

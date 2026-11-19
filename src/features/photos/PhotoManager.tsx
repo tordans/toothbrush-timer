@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { twMerge } from 'tailwind-merge'
-import { useFamily, useFamilyKey } from '@/features/family/family-store'
+import { useFamily, useFamilyActions, useFamilyKey } from '@/features/family/family-store'
 import { useNow } from '@/hooks/use-now'
 import { dayMonthShort, fromIsoDay, weekKey } from '@/lib/dates'
 import type { Photo } from './api'
+import { OCCASIONS } from './occasions'
 import { usePhotoActions, usePhotos, useUploadProgress } from './photo-store'
-import { needsNewPhotos, unusedPhotos } from './rewards'
+import { needsNewPhotos, photoOccasion, regularPhotos } from './rewards'
 import { usePhotoUrl } from './use-photo-url'
 
 /** The server keeps at most this many photos per family (see docs/central-storage.md). */
@@ -23,6 +24,7 @@ export function PhotoManager() {
   const photos = usePhotos()
   const upload = useUploadProgress()
   const { add, remove, refresh } = usePhotoActions()
+  const { setPhotoOccasion } = useFamilyActions()
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export function PhotoManager() {
   }
 
   const currentWeek = weekKey(now)
-  const unused = unusedPhotos(family, photos)
+  // Photos kept for an occasion wait for their week, so they do not count for normal weeks.
+  const unused = regularPhotos(family, photos)
   const needsNew = needsNewPhotos(family, photos, currentWeek)
   const uploading = upload !== null && upload.done < upload.total
 
@@ -131,9 +134,27 @@ export function PhotoManager() {
             return (
               <li key={photo.id} className="flex flex-col gap-2 rounded-2xl bg-white p-2">
                 <Thumb photo={photo} />
-                <p className="px-1 text-sm text-bark-600">
-                  {week ? `Woche vom ${dayMonthShort(fromIsoDay(week))}` : 'Noch nicht dran'}
-                </p>
+                {week ? (
+                  <p className="px-1 text-sm text-bark-600">
+                    Woche vom {dayMonthShort(fromIsoDay(week))}
+                  </p>
+                ) : (
+                  <label className="flex flex-col gap-1 px-1 text-sm text-bark-600">
+                    Für welche Woche?
+                    <select
+                      value={photoOccasion(family, photo.id) ?? ''}
+                      onChange={(e) => setPhotoOccasion(photo.id, e.currentTarget.value || null)}
+                      className="min-h-11 rounded-xl border-2 border-bark-100 bg-cream px-2 text-base font-bold text-bark-900"
+                    >
+                      <option value="">Nächste normale Woche</option>
+                      {OCCASIONS.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <button
                   type="button"
                   disabled={deletingId === photo.id}

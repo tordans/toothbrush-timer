@@ -92,21 +92,30 @@ warn a week ahead when an occasion is coming and no photo is marked for it: "Nä
 Nikolaus. Möchtest du ein Nikolaus-Foto vorbereiten?" The warning only asks; the week still works
 without one.
 
-## Data
+## Data (as built)
 
-- A photo gets an optional `occasion` field: the id of a built-in occasion (`advent`, `nikolaus`,
-  `christmas`, `new-year`, `easter`, `halloween`, …) or of an own occasion. It belongs to the photo
-  record on the server, where the photo list lives.
-- Own occasions live in the family state, with `updatedAt` and tombstones like every other record.
-- Built-in occasions are code: an id, a German name and a function from year to date.
-- Which built-in occasions a family uses is a setting in the family state (all on by default for
-  the six starting ones, off for the rest).
+- `photoOccasions` in the family state (schema version 3): photo id → `{ occasion, updatedAt }`.
+  `occasion: null` means the mark was taken off. It merges like every other record (newer
+  `updatedAt` wins), so no server change was needed. Apps of version 2 refuse version 3 and ask to
+  reload, so an old phone never drops the marks.
+- Built-in occasions are code (`src/features/photos/occasions.ts`): an id, a German name and the
+  days that make a week belong to it. Easter is calculated.
+- The parents mark a photo in the "Fotos" tab of the parents' area ("Für welche Woche?"). The
+  section "Besondere Wochen" lists the coming year's occasion weeks with "Foto bereit" or "Noch
+  kein Foto".
+- The hint: when next week has an occasion without a kept photo (or no photo is left at all), an
+  orange "!" sits next to the parents' gear. A plain tap opens the hint, without the parents'
+  question, because it only informs. "Zu den Fotos" leads on through the parents' question to
+  the "Fotos" tab.
 
-## Open questions
+## Decisions
 
-- An occasion photo that was not used (the week passed without brushing): does it wait for next
-  year, or join the normal order? Proposal: it joins the normal order after its week.
-- Can one photo be marked for several occasions? Proposal: no, one occasion per photo keeps the
-  choice simple.
-- Should a past year's occasion photo come back the next year? Proposal: no, each year gets new
-  photos; the old ones stay visible in their week.
+- A kept photo that was not used in its week waits for the same occasion next year. Parents can
+  take the mark off to put it back into the normal order.
+- One occasion per photo.
+- A past year's occasion photo does not come back; it stays visible in its week.
+
+## Later
+
+- Own occasions (birthday, Zahnfee, first day of school): name, date, yearly or once.
+- Choosing which built-in occasions a family uses, and the further occasions listed above.

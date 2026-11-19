@@ -45,6 +45,7 @@ const brushRoute = createRoute({
 const parentsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/eltern',
+  validateSearch: z.object({ tab: z.enum(['putzen', 'fotos']).optional().catch(undefined) }),
   component: ParentsPage,
 })
 

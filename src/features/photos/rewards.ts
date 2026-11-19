@@ -1,6 +1,8 @@
+import { addDays, parseISO } from 'date-fns'
 import type { FamilyState } from '@/features/family/schema'
-import { weekDays } from '@/lib/dates'
+import { weekDays, weekKey } from '@/lib/dates'
 import type { Photo } from './api'
+import { occasionsOfWeek, type OccasionId } from './occasions'
 
 /**
  * Reward photos: each week (Monday to Sunday) the family gets one photo, covered at first. Every
@@ -31,6 +33,29 @@ export function unusedPhotos(family: FamilyState, photos: Photo[] | null): Photo
   return (photos ?? []).filter((p) => !used.has(p.id))
 }
 
+/** The occasion a photo is kept for, or null. */
+export function photoOccasion(family: FamilyState, photoId: string): string | null {
+  return family.photoOccasions[photoId]?.occasion ?? null
+}
+
+/**
+ * Unused photos in the normal order. Photos kept for an occasion wait for its week (also into the
+ * next year, if their week passed without them), so a Christmas photo is never used up in October.
+ */
+export function regularPhotos(family: FamilyState, photos: Photo[] | null): Photo[] {
+  return unusedPhotos(family, photos).filter((p) => !photoOccasion(family, p.id))
+}
+
+/** An unused photo kept for one of this week's occasions, the most important occasion first. */
+function occasionPhoto(family: FamilyState, photos: Photo[] | null, week: string): Photo | null {
+  const unused = unusedPhotos(family, photos)
+  for (const occasion of occasionsOfWeek(week)) {
+    const photo = unused.find((p) => photoOccasion(family, p.id) === occasion)
+    if (photo) return photo
+  }
+  return null
+}
+
 export type WeekPhotoInfo = {
   photo: Photo
   /** Field index → uncovered. */
@@ -40,8 +65,9 @@ export type WeekPhotoInfo = {
 }
 
 /**
- * The photo of a week. The current week takes the oldest unused photo until its first field is
- * uncovered; from then on the choice is stored. Older weeks only have a photo if one was stored.
+ * The photo of a week. The current week takes a photo kept for one of its occasions, or else the
+ * oldest photo in the normal order, until its first field is uncovered; from then on the choice
+ * is stored. Older weeks only have a photo if one was stored.
  * Null when there is none, or when its photo was deleted.
  */
 export function photoForWeek(
@@ -57,7 +83,7 @@ export function photoForWeek(
     return { photo, revealed: new Set(Object.keys(stored.cells).map(Number)), assigned: true }
   }
   if (week !== currentWeek) return null
-  const next = unusedPhotos(family, photos)[0]
+  const next = occasionPhoto(family, photos, week) ?? regularPhotos(family, photos)[0]
   return next ? { photo: next, revealed: new Set(), assigned: false } : null
 }
 
@@ -112,7 +138,26 @@ export function needsNewPhotos(
   currentWeek: string,
 ): boolean {
   if (!photosEnabled(photos)) return false
-  const unused = unusedPhotos(family, photos).length
-  const thisWeekTakesOne = family.weekPhotos[currentWeek] ? 0 : 1
-  return unused - thisWeekTakesOne < 1
+  const regular = regularPhotos(family, photos).length
+  const thisWeek = family.weekPhotos[currentWeek]
+    ? null
+    : photoForWeek(family, photos, currentWeek, currentWeek)
+  const thisWeekTakesOne = thisWeek && !photoOccasion(family, thisWeek.photo.id) ? 1 : 0
+  return regular - thisWeekTakesOne < 1
+}
+
+/**
+ * Parents: next week has an occasion and no photo is kept for it yet. The gear shows a hint a
+ * week ahead; the week works without one, it then takes the next photo in the normal order.
+ */
+export function occasionWithoutPhoto(
+  family: FamilyState,
+  photos: Photo[] | null,
+  currentWeek: string,
+): OccasionId | null {
+  if (!photosEnabled(photos)) return null
+  const nextWeek = weekKey(addDays(parseISO(currentWeek), 7))
+  const occasion = occasionsOfWeek(nextWeek)[0]
+  if (!occasion) return null
+  return occasionPhoto(family, photos, nextWeek) ? null : occasion
 }

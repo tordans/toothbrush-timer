@@ -38,10 +38,16 @@ function state(patch: Partial<FamilyState>): FamilyState {
 }
 
 describe('family state version 2', () => {
-  it('reads version 1 data and adds empty week photos', () => {
-    const parsed = parseFamilyState({ ...emptyFamilyState(), schema: 1, weekPhotos: undefined })
-    expect(parsed?.schema).toBe(2)
+  it('reads version 1 data and adds empty week photos and occasions', () => {
+    const parsed = parseFamilyState({
+      ...emptyFamilyState(),
+      schema: 1,
+      weekPhotos: undefined,
+      photoOccasions: undefined,
+    })
+    expect(parsed?.schema).toBe(3)
     expect(parsed?.weekPhotos).toEqual({})
+    expect(parsed?.photoOccasions).toEqual({})
   })
 })
 

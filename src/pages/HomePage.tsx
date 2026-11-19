@@ -23,6 +23,8 @@ import type { Animal as AnimalId, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
 import { ParentGateDialog } from '@/features/parent-gate/ParentGateDialog'
+import { ParentHintDialog } from '@/features/parent-gate/ParentHintDialog'
+import { occasionName } from '@/features/photos/occasions'
 import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { useElementSize } from '@/hooks/use-element-size'
 import { useNow } from '@/hooks/use-now'
@@ -47,6 +49,9 @@ export function HomePage() {
   const [pickingAnimal, setPickingAnimal] = useState(false)
   // Holding the gear only opens the parent gate; /eltern comes after the right animal is tapped.
   const [gateOpen, setGateOpen] = useState(false)
+  // Where the parents' question leads: the photos tab when it was opened from a hint.
+  const [gateTarget, setGateTarget] = useState<'putzen' | 'fotos'>('putzen')
+  const [hintOpen, setHintOpen] = useState(false)
   const slot = slotForTime(now)
   const light = dayLightForSlot(slot, now)
   // Name and week stand right on the sky: dark text by day, light text in the evening and at night.
@@ -75,7 +80,15 @@ export function HomePage() {
   })
   const brushedNow = kid ? isBrushed(family, kid.id, today, slot) : false
 
-  const openParents = () => void navigate({ to: '/eltern' })
+  const openParents = () =>
+    void navigate({ to: '/eltern', search: gateTarget === 'fotos' ? { tab: 'fotos' } : {} })
+  const occasion = photo.occasionWithoutPhoto
+  const parentHints = [
+    photo.needsNewPhotos &&
+      'Für nächste Woche ist kein Foto mehr da. Bitte ladet im Elternbereich unter „Fotos“ neue hoch.',
+    occasion &&
+      `Nächste Woche ist ${occasionName(occasion)}. Wenn ihr mögt, bereitet ein passendes Foto vor: im Elternbereich unter „Fotos“ hochladen und „${occasionName(occasion)}“ auswählen. Ohne bekommt die Woche ein normales Foto.`,
+  ].filter((h): h is string => Boolean(h))
   const openPhoto = (photoWeek?: string, kidId?: string) =>
     navigate({ to: '/foto', search: { week: photoWeek, kid: kidId } })
 
@@ -189,25 +202,28 @@ export function HomePage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* The hint opens with a plain tap: it only tells, the parents' area stays behind
+                  the question. */}
+              {parentHints.length > 0 && (
+                <button
+                  type="button"
+                  aria-label="Hinweis für Eltern"
+                  onClick={() => setHintOpen(true)}
+                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center rounded-full bg-[#f4a62a] text-xl font-extrabold text-bark-900 shadow ring-2 ring-cream transition active:scale-90"
+                >
+                  !
+                </button>
+              )}
               <HoldButton
                 ms={500}
-                onHold={() => setGateOpen(true)}
-                label={
-                  photo.needsNewPhotos
-                    ? 'Eltern: Bitte neue Fotos hochladen. Gedrückt halten'
-                    : 'Für Eltern: gedrückt halten'
-                }
+                onHold={() => {
+                  setGateTarget('putzen')
+                  setGateOpen(true)
+                }}
+                label="Für Eltern: gedrückt halten"
                 className="rounded-full bg-cream/90 p-2.5 shadow"
               >
                 <GearIcon className="h-6 w-6 text-bark-700" />
-                {photo.needsNewPhotos && (
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f4a62a] text-sm font-extrabold leading-none text-bark-900 shadow ring-2 ring-cream"
-                  >
-                    !
-                  </span>
-                )}
               </HoldButton>
             </div>
           </div>
@@ -246,6 +262,17 @@ export function HomePage() {
         />
       )}
 
+      {hintOpen && (
+        <ParentHintDialog
+          hints={parentHints}
+          onOpenParents={() => {
+            setHintOpen(false)
+            setGateTarget('fotos')
+            setGateOpen(true)
+          }}
+          onClose={() => setHintOpen(false)}
+        />
+      )}
       {gateOpen && <ParentGateDialog onPass={openParents} onClose={() => setGateOpen(false)} />}
     </main>
   )

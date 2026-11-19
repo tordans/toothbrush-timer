@@ -47,6 +47,8 @@ type FamilyStore = {
      * which photo the week shows. Does nothing if the week already has another photo.
      */
     revealCells: (week: string, photoId: string, kidId: string, cells: number[]) => void
+    /** Keeps a photo for an occasion's week, or (null) puts it back into the normal order. */
+    setPhotoOccasion: (photoId: string, occasion: string | null) => void
     connect: (familyKey: string) => void
     disconnect: () => void
     /** Used by the sync engine only. */
@@ -155,6 +157,11 @@ const useFamilyStore = create<FamilyStore>()(
                 },
               }
             }),
+          setPhotoOccasion: (photoId, occasion) =>
+            change((f) => ({
+              ...f,
+              photoOccasions: { ...f.photoOccasions, [photoId]: { occasion, updatedAt: nowIso() } },
+            })),
           updateSettings: (patch) =>
             change((f) => ({ ...f, settings: { ...f.settings, ...patch, updatedAt: nowIso() } })),
           connect: (familyKey) =>

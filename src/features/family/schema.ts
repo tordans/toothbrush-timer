@@ -64,15 +64,25 @@ const weekPhotoSchema = z.object({
 })
 export type WeekPhoto = z.infer<typeof weekPhotoSchema>
 
+/**
+ * The occasion a photo is kept for (see docs/occasions.md), keyed by photo id. `occasion: null`
+ * means the mark was taken off again; the record stays so the newer choice wins on merge.
+ */
+const photoOccasionSchema = z.object({
+  occasion: z.string().nullable(),
+  updatedAt: z.string(),
+})
+
 const familyStateSchema = z.object({
-  // Version 2 added `weekPhotos`. Older apps refuse version 2 (and so never drop the photos);
-  // this app reads version 1 and writes version 2.
-  schema: z.union([z.literal(1), z.literal(2)]).transform((): 2 => 2),
+  // Version 2 added `weekPhotos`, version 3 `photoOccasions`. Older apps refuse a newer version
+  // (and so never drop what they do not know); this app reads 1 to 3 and writes 3.
+  schema: z.union([z.literal(1), z.literal(2), z.literal(3)]).transform((): 3 => 3),
   kids: z.record(z.string(), kidSchema),
   brushings: z.record(z.string(), brushingSchema),
   settings: settingsSchema,
   /** Keyed by the Monday of the week, `YYYY-MM-DD`. */
   weekPhotos: z.record(isoDate, weekPhotoSchema).default({}),
+  photoOccasions: z.record(z.string(), photoOccasionSchema).default({}),
 })
 export type FamilyState = z.output<typeof familyStateSchema>
 
@@ -80,11 +90,12 @@ const EPOCH = '1970-01-01T00:00:00.000Z'
 
 export function emptyFamilyState(): FamilyState {
   return {
-    schema: 2,
+    schema: 3,
     kids: {},
     brushings: {},
     settings: { music: true, gong: true, updatedAt: EPOCH },
     weekPhotos: {},
+    photoOccasions: {},
   }
 }
 

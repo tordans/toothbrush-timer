@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@tanstack/react-router'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { subDays } from 'date-fns'
 import { useState, type ReactNode } from 'react'
 import { twMerge } from 'tailwind-merge'
@@ -16,36 +16,90 @@ import {
 import { activeKids, brushingsFor } from '@/features/family/queries'
 import { SLOTS, type Animal as AnimalId, type Kid, type Toothbrush } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
+import { OccasionsOverview } from '@/features/photos/OccasionsOverview'
 import { PhotoManager } from '@/features/photos/PhotoManager'
+import { ShortcutsGuide } from '@/features/photos/ShortcutsGuide'
 import { renewFamilyKey } from '@/features/sync/api'
 import { syncNow } from '@/features/sync/sync-engine'
 import { useNow } from '@/hooks/use-now'
 import { dayMonth, dayMonthShort, isoDay, timeLabel, weekdayShort } from '@/lib/dates'
 
+const route = getRouteApi('/eltern')
+
 export function ParentsPage() {
   const navigate = useNavigate()
+  const { tab = 'putzen' } = route.useSearch()
+  const showTab = (next: 'putzen' | 'fotos') =>
+    void navigate({ to: '/eltern', search: next === 'putzen' ? {} : { tab: next }, replace: true })
   return (
     <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* The one way out stays in view while scrolling, like on the calendar. */}
       <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
         {/* Same column and padding as the sections below, so the button lines up with them. */}
-        <div className="mx-auto max-w-2xl px-4">
+        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4">
           <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
             <ChevronLeft className="h-5 w-5" />
             Zurück in den Wald
           </Button>
+          {/* Two worlds: the brushing (children, calendar, sound, devices) and the photos. */}
+          <div className="flex rounded-full bg-moss-900/60 p-1" role="tablist">
+            <TabButton active={tab === 'putzen'} onClick={() => showTab('putzen')}>
+              Putzen
+            </TabButton>
+            <TabButton active={tab === 'fotos'} onClick={() => showTab('fotos')}>
+              Fotos
+            </TabButton>
+          </div>
         </div>
       </div>
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-16">
         <h1 className="px-1 text-3xl font-extrabold text-cream">Für Eltern</h1>
-        <KidsSection />
-        <CalendarSection />
-        <SoundSection />
-        <PhotosSection />
-        <DevicesSection />
-        <AboutSection />
+        {tab === 'putzen' ? (
+          <>
+            <KidsSection />
+            <CalendarSection />
+            <SoundSection />
+            <DevicesSection />
+            <AboutSection />
+          </>
+        ) : (
+          <>
+            <PhotosSection />
+            <Section title="Besondere Wochen">
+              <OccasionsOverview />
+            </Section>
+            <Section title="Bilder mit Apple Intelligence">
+              <ShortcutsGuide />
+            </Section>
+          </>
+        )}
       </div>
     </main>
+  )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={twMerge(
+        'min-h-11 cursor-pointer select-none rounded-full px-5 py-2 text-base font-extrabold transition active:scale-95',
+        active ? 'bg-cream text-bark-900 shadow' : 'text-cream/85',
+      )}
+    >
+      {children}
+    </button>
   )
 }
 

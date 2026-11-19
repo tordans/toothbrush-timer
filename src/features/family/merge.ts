@@ -56,11 +56,12 @@ function mergeWeekPhotos(
  */
 export function mergeFamilyStates(a: FamilyState, b: FamilyState): FamilyState {
   return {
-    schema: 2,
+    schema: 3,
     kids: mergeRecords(a.kids, b.kids),
     brushings: mergeRecords(a.brushings, b.brushings),
     settings: newer(a.settings, b.settings) ?? a.settings,
     weekPhotos: mergeWeekPhotos(a.weekPhotos, b.weekPhotos),
+    photoOccasions: mergeRecords(a.photoOccasions, b.photoOccasions),
   }
 }
 
