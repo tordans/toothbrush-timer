@@ -13,7 +13,7 @@ All prompts start with the same base:
 
 <!-- build:base -->
 
-`joyful children's picture book illustration, ink lines and soft watercolor, big happy smiles, both eyes looking straight ahead`
+`joyful children's picture book illustration, ink lines and soft watercolor, big happy smiles, both eyes looking straight ahead, keep the original background`
 
 <!-- build:rows -->
 
@@ -21,11 +21,11 @@ All prompts start with the same base:
 | ------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | Zahnputz-Bild Alltag      | Alltag      | `bright cheerful colors, friendly round shapes, little stars and sparkles around`                                                             | –           |
 | Zahnputz-Bild Wichtel     | Wichtel     | `three little gnomes with red pointed hats peeking out from hiding places, tiny door in the wall, small presents, fairy lights, fir branches` | –           |
-| Zahnputz-Bild Nikolaus    | Nikolaus    | `red santa hat with white trim, boots filled with oranges, nuts and chocolate, little golden stars`                                           | –           |
-| Zahnputz-Bild Weihnachten | Weihnachten | `red pointed christmas hat, christmas baubles, small presents, warm candle light, fir branches, snowflakes`                                   | –           |
-| Zahnputz-Bild Silvester   | Silvester   | `colorful paper party hat, streamers and confetti, four-leaf clover, little pink lucky pig, soft sparkles`                                    | –           |
-| Zahnputz-Bild Ostern      | Ostern      | `bunny ears, small colorful easter eggs hidden all around the scene, little bunny peeking out, spring flowers`                                | –           |
-| Zahnputz-Bild Halloween   | Halloween   | `purple witch hat, small smiling pumpkin lanterns, friendly little sheet ghost, small black cat, autumn leaves`                               | –           |
+| Zahnputz-Bild Nikolaus    | Nikolaus    | `red santa hats with white trim on every head, boots filled with oranges, nuts and chocolate, little golden stars`                            | –           |
+| Zahnputz-Bild Weihnachten | Weihnachten | `red pointed christmas hats on every head, christmas baubles, small presents, warm candle light, fir branches, snowflakes`                    | –           |
+| Zahnputz-Bild Silvester   | Silvester   | `colorful paper party hats on every head, streamers and confetti, four-leaf clover, little pink lucky pig, soft sparkles`                     | –           |
+| Zahnputz-Bild Ostern      | Ostern      | `bunny ears on every head, small colorful easter eggs hidden all around the scene, little bunny peeking out, spring flowers`                  | –           |
+| Zahnputz-Bild Halloween   | Halloween   | `purple witch hats on every head, small smiling pumpkin lanterns, friendly little sheet ghost, small black cat, autumn leaves`                | –           |
 
 <!-- build:end -->
 

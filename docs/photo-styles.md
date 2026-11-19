@@ -43,15 +43,26 @@ Every shortcut uses the Image Playground style **Illustration** and one prompt (
 "Bild erstellen"). Each prompt is a shared **base** (watercolour picture-book look, happy faces,
 eyes looking ahead) followed by the style's hidden things and what is worn. **The exact prompts are
 in [kurzbefehle.md](kurzbefehle.md)**, where the build script reads them; this document says what
-each style is meant to show. The prompts were tried on test pictures (penguin and owl from
-`/Library/User Pictures`) on 19 November 2026, macOS 27.2.1. Family photos were not used for this
-test, so how faces come out per theme is still to be seen.
+each style is meant to show. The prompts were tried on 19 November 2026, macOS 27.2.1: first on
+sample pictures (penguin and owl from `/Library/User Pictures`), then on one real family photo
+with several people (kept outside git; results only shown to the owner).
 
 What Image Playground accepts, learned from the tests:
 
 - **No words for people.** "child wearing bunny ears" is refused ("Versuche es mit einer anderen
   Beschreibung"). Write only the thing: "bunny ears", "red santa hat". Image Playground puts it on
-  the person in the photo by itself.
+  a person in the photo by itself.
+- **Nothing was refused on the family photo.** All seven styles went through on the first try,
+  8 to 10 seconds each. Faces stayed recognisable and friendly in every style.
+- **"on every head" decides who wears it.** With just "bunny ears" or "party hat", the item went
+  to one or two people, often not the child. With "bunny ears on every head" (and the same for
+  hats), everyone in the photo wore it, the child included. It is not a person word, so it is
+  accepted.
+- **"keep the original background" keeps the place.** Without it, several styles swapped the
+  photo's background for a plain or invented one. With it, the real scene stayed and the extras
+  were added on top.
+- **Generated lettering can still appear** on walls or signs, garbled. No prompt tried so far
+  prevents it; pick another run if it shows.
 - **English, short phrases separated by commas** work; the longest prompt (Wichtel, about 40
   words) still went through.
 - **Without the base,** the picture is flat and plain; with it, watercolour and warm light.
