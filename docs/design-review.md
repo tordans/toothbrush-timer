@@ -44,6 +44,8 @@ Ranked by value. Effort: S = an hour or two, M = half a day to a day, L = more.
   as in the forest) grows in large, lights up once, the animal hops next to it. No stars, no
   counting, nothing more than the forest already shows. Needs a still fallback for reduced motion.
 - **Effort:** M.
+- **Built** (November 2026), with a celebration of its own for each animal; see "The 'Fertig!'
+  moment" in [animals.md](animals.md).
 
 ## 4. Calendar on a tablet: a small card in a dark field
 

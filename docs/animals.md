@@ -58,8 +58,25 @@ German terms are kept where the child sees or hears them (animal names, item nam
   step (`index.css`), and on the photo the animal does not hop; the field simply fades
   (`fadeClear`). Every new animation needs such a still or fade fallback that keeps the meaning.
 - Shared moves today: the animal bobs (3 s), waves while the corner changes (0.6 s), glides to
-  the next corner (1.4 s ease-in-out), brushes with a wobbling toothbrush (0.5 s), hops on the
-  "done" screen. These are the same for every animal.
+  the next corner (1.4 s ease-in-out), brushes with a wobbling toothbrush (0.5 s). These are the
+  same for every animal. The "Fertig!" moment is the first move that differs per animal (below).
+
+### The "Fertig!" moment
+
+At the end of brushing, today's clearing from the forest (meadow, dashed "today" ring, the flower
+in the morning or the lantern in the evening) grows in large, the animal celebrates once in its
+own way, and at the animal's high point the flower opens or the lantern lights: a soft
+cross-fade, one ring of light spreading out, and a warm pool of light that stays. Then everything
+rests: the animal bobs, the thought bubble with its item appears if the photo has fields left.
+
+- About 2–4 s in all: the clearing grows in (0.6 s), the animal starts at 0.6 s, the light comes
+  on at 1.4–2.1 s depending on the animal. The text fades in at 0.3 s, the buttons at 0.9 s, so a
+  parent can tap on at once.
+- No stars, confetti, points or counting; the light is the only reward, the same one the forest
+  shows.
+- Reduced motion: nothing moves; the scene stands at rest and only the light fades on (0.8 s).
+- Code: `src/features/forest/DoneMoment.tsx` (`CHEER`), keyframes `cheer-*` in
+  `tailwind.config.ts`, the reduced-motion rules `.cheer-stage` in `src/index.css`.
 
 ### Shared drawing rules
 
@@ -101,6 +118,8 @@ German terms are kept where the child sees or hears them (animal names, item nam
 - Signature gesture: the **mouse pounce** in the reveal: crouch, high arc, a head-first dive turning
   upside down into the snow, a little wiggle inside, a flip back out (about 1.5 s in all).
 - Joy: a small hop on the spot with the tail swishing. Rest: curled with the tail around the paws.
+- Done: tiptoe left, tiptoe right, crouch, then one high pounce with a little tilt; the flower
+  or lantern lights at the top of the jump (1.6 s).
 
 **Sound and music**
 
@@ -157,6 +176,8 @@ German terms are kept where the child sees or hears them (animal names, item nam
 - Signature gesture: **curl and roll**: it curls into a ball (scale 0.82), rolls twice through the
   field (850 ms), and the leaves stay stuck on its spines.
 - Joy: a quick curl-and-uncurl, like a sneeze. Rest: curled into a ball, breathing.
+- Done: curls into a ball (0.8), rolls one turn towards the flower or lantern and back, then
+  uncurls with a small puff (1.8 s); the light comes on as it uncurls.
 
 **Sound and music**
 
@@ -213,6 +234,8 @@ away.
 - Signature gesture: **hover and blow**: it hovers beside the field, flaps five times and blows the
   cloud away with a few streaks of wind (about 1.1 s).
 - Joy: a wide wing spread and a slow head tilt. Rest: eyes half closed, feathers puffed.
+- Done: lifts off a little and hovers with its wings spread wide (drawn over the folded ones,
+  1.5× long), three slow beats, glides down and tilts its head (2.2 s).
 
 **Sound and music**
 
@@ -268,6 +291,7 @@ away.
 - Signature gesture: **nibble down**: leans in and nibbles the grass in three bites while the field
   shrinks from the top, then eats the clover (about 1.3 s).
 - Joy: a double hop with ears flopping. Rest: lying flat, ears laid back, nose twitching.
+- Done: a double skip, a high hop and a short one, with squash on each landing (1.5 s).
 
 **Sound and music**
 
@@ -323,6 +347,8 @@ away.
 - Signature gesture: **grab and nibble**: grabs the nut, nibbles it with crumbs falling, then tucks
   it into its cheeks (about 1.4 s).
 - Joy: a fast tail flick and a spin. Rest: sitting upright holding a nut, tail over its back.
+- Done: a quick hop with one full turn (drawn as a flip through the side view), then a tail
+  flick left-right (1.2 s, the shortest).
 
 **Sound and music**
 
@@ -378,6 +404,7 @@ away.
 - Signature gesture: **pick and munch**: picks the blueberries one by one with a happy bob while the
   bush shrinks (about 1.4 s).
 - Joy: rubbing its tummy, a slow sway. Rest: sitting back, paws on its belly.
+- Done: a slow happy sway (±8°) while one paw rubs its tummy in two circles (2.6 s).
 
 **Sound and music**
 
@@ -435,6 +462,8 @@ away.
 - Signature gesture: **slow munch**: takes the leaves and munches them slowly while the branch
   shrinks from its side (about 1.5 s).
 - Joy: a slow, wide sway and closed happy eyes. Rest: dozing, head on its paws.
+- Done: the slowest: a wide sway with its eyes closed into two happy arcs, which open again
+  at the end (3 s).
 
 **Sound and music**
 
@@ -482,20 +511,21 @@ widen these differences, not narrow them.
 
 ## Where it lives in the code
 
-| Aspect                                 | File                                                       |
-| -------------------------------------- | ---------------------------------------------------------- |
-| Animal ids                             | `src/features/family/schema.ts`                            |
-| German names, drawings, eyes, cheeks   | `src/features/forest/Animal.tsx`                           |
-| Songs, instruments, jingles            | `src/features/timer/music.ts` (`SONGS`)                    |
-| Audio playback                         | `src/features/timer/audio.ts`                              |
-| Items (40×40)                          | `src/features/photos/animal-items.tsx`                     |
-| Photo cover texture per animal         | `src/features/photos/PhotoCover.tsx` (`COVER_STYLE`)       |
-| Hopping, flying and clearing motions   | `src/features/photos/reveal-motion.ts` (`travel`, `CLEAR`) |
-| Reveal sequence, flying bits           | `src/features/photos/RevealAnimal.tsx` (`EXTRA_BIT`)       |
-| Thought bubble with the item           | `src/features/photos/ThoughtBubble.tsx`                    |
-| Shared CSS animations (bob, wave, hop) | `tailwind.config.ts`, `src/index.css`                      |
-| Brushing screen, done screen           | `src/pages/BrushPage.tsx`                                  |
-| Forest week                            | `src/features/forest/ForestWeek.tsx`                       |
+| Aspect                                   | File                                                       |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| Animal ids                               | `src/features/family/schema.ts`                            |
+| German names, drawings, eyes, cheeks     | `src/features/forest/Animal.tsx`                           |
+| Songs, instruments, jingles              | `src/features/timer/music.ts` (`SONGS`)                    |
+| Audio playback                           | `src/features/timer/audio.ts`                              |
+| Items (40×40)                            | `src/features/photos/animal-items.tsx`                     |
+| Photo cover texture per animal           | `src/features/photos/PhotoCover.tsx` (`COVER_STYLE`)       |
+| Hopping, flying and clearing motions     | `src/features/photos/reveal-motion.ts` (`travel`, `CLEAR`) |
+| Reveal sequence, flying bits             | `src/features/photos/RevealAnimal.tsx` (`EXTRA_BIT`)       |
+| Thought bubble with the item             | `src/features/photos/ThoughtBubble.tsx`                    |
+| Shared CSS animations (bob, wave, cheer) | `tailwind.config.ts`, `src/index.css`                      |
+| Brushing screen, done screen             | `src/pages/BrushPage.tsx`                                  |
+| "Fertig!" moment per animal              | `src/features/forest/DoneMoment.tsx` (`CHEER`)             |
+| Forest week                              | `src/features/forest/ForestWeek.tsx`                       |
 
 ## Open points
 
@@ -510,8 +540,8 @@ widen these differences, not narrow them.
 - **Bear and koala hop at the standard speed.** Only the squirrel (quicker) and the owl (flying)
   travel differently. A slower, heavier hop for the bear and a slow climb-like move for the koala
   would match their songs.
-- **Brushing moves are the same for all animals.** Bob, wave, corner glide and the done-screen hop
-  do not express any persona yet.
+- **Brushing moves are the same for all animals.** Bob, wave and corner glide do not express any
+  persona yet; only the "Fertig!" moment does.
 - **Song names don't match animals.** Three songs are named by style (`spieluhr` for the owl,
   `marimbaSong` for the squirrel, `lagerfeuer` for the bear), the rest by animal.
 - **Item names are not shown as text.** The German item names here are working names; the app

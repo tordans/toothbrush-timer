@@ -42,6 +42,19 @@ textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* "Fertig!" (DoneMoment.tsx): the scene stands still at rest; only the light fades on. */
+  .cheer-stage,
+  .cheer-stage * {
+    animation-delay: 0s !important;
+  }
+  .cheer-stage .cheer-fade {
+    animation-duration: 0.8s !important;
+    animation-delay: 0.4s !important;
+  }
+  .cheer-stage .cheer-burst {
+    display: none;
+  }
 }
 
 /* Clouds drift from the left edge to beyond the right edge (distance in --drift). */
