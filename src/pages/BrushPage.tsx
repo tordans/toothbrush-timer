@@ -253,7 +253,7 @@ export function BrushPage() {
               </>
             ) : (
               <>
-                <p className="text-sm font-bold uppercase tracking-wider opacity-70">
+                <p className="text-base font-bold opacity-75">
                   {position.switching ? 'Wechseln!' : `Ecke ${position.sectionIndex + 1} von 4`}
                 </p>
                 <h1 className="text-4xl font-extrabold sm:text-5xl">

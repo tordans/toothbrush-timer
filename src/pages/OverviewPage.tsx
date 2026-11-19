@@ -72,31 +72,34 @@ export function OverviewPage() {
 
   return (
     <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 bg-moss-800/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
-        <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
-          <ChevronLeft className="h-5 w-5" />
-          Zurück in den Wald
-        </Button>
-        {/* Switching children only makes sense with more than one. */}
-        <div className="ml-auto flex flex-wrap gap-2">
-          {kids.length > 1 &&
-            kids.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                onClick={() => {
-                  setActiveKid(k.id)
-                  void navigate({ to: '/uebersicht', search: { kid: k.id }, replace: true })
-                }}
-                className={twMerge(
-                  'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold transition active:scale-95',
-                  k.id === kid.id ? 'bg-cream text-bark-900' : 'bg-white/20 text-cream',
-                )}
-              >
-                <AnimalBadge animal={k.animal} className="h-9 w-9 bg-white" />
-                {k.name}
-              </button>
-            ))}
+      <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+        {/* Same column as the months below, so on a tablet the buttons sit next to the calendar. */}
+        <div className="mx-auto flex max-w-xl flex-wrap items-center gap-2 px-4">
+          <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>
+            <ChevronLeft className="h-5 w-5" />
+            Zurück in den Wald
+          </Button>
+          {/* Switching children only makes sense with more than one. */}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {kids.length > 1 &&
+              kids.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveKid(k.id)
+                    void navigate({ to: '/uebersicht', search: { kid: k.id }, replace: true })
+                  }}
+                  className={twMerge(
+                    'flex items-center gap-2 rounded-full py-1 pl-1 pr-4 font-extrabold transition active:scale-95',
+                    k.id === kid.id ? 'bg-cream text-bark-900' : 'bg-white/20 text-cream',
+                  )}
+                >
+                  <AnimalBadge animal={k.animal} className="h-9 w-9 bg-white" />
+                  {k.name}
+                </button>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -197,12 +200,14 @@ function MonthCard({
                 )}
               >
                 <span className="text-xs font-bold text-bark-700">{day.getDate()}</span>
-                {!future && (
-                  <span className="flex items-end gap-0.5">
-                    <MiniFlower open={state.morning} compact={thumbs} />
-                    <MiniLantern lit={state.evening} compact={thumbs} />
-                  </span>
-                )}
+                {/* Future days keep the (hidden) icons, so a week still to come is as tall as the others. */}
+                <span
+                  className={twMerge('flex items-end gap-0.5', future && 'invisible')}
+                  aria-hidden={future || undefined}
+                >
+                  <MiniFlower open={state.morning} compact={thumbs} />
+                  <MiniLantern lit={state.evening} compact={thumbs} />
+                </span>
               </div>
               {thumbs && getISODay(day) === 7 && thumbCell(weekKey(day))}
             </Fragment>
