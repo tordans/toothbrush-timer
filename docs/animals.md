@@ -34,8 +34,16 @@ German terms are kept where the child sees or hears them (animal names, item nam
 - No drums in the usual sense, no hard attacks, no distortion, no sirens, no falling "fail"
   phrases, no minor-key sadness. Noise only as a whisper (shaker, breath, woodblock click).
 - Melodies stay in about MIDI 64–84 (E4–C6); bass in octave 2–3, always soft (triangle or sine).
-- The **corner jingle** is a short rising phrase on the song's beat and in its instrument, ending
-  on C (mostly C–E–G–C, 72–76–79–84). It says "next corner" without breaking the song.
+- The **corner jingle** is a short rising phrase (about 1–1.5 s) on the song's beat and in its
+  instrument, ending on a C. It says "next corner" without breaking the song. Each animal has its
+  own rhythm and its own last step into that C, because children recognise a tune before a timbre:
+  owl B→C (half step), koala A→C (third), fox G→C (fourth), rabbit F→C (fifth), bear E→C (sixth),
+  squirrel C→C' (octave), hedgehog C–C (the same note twice). A new animal takes an ending no one
+  has.
+- Jingles and bells play on their own sound bus: they also sound when the music is off. While a
+  jingle plays, the music steps back to about 40 % and returns over half a second.
+- Each loop's last bar is a G chord, so the loop returns home without a seam.
+- Listen to every song and jingle on the dev server at `/sound-lab.html`.
 - New sounds (tap, happy, sleepy) follow the same rules: under one second, in C major, the
   animal's own timbre, quieter than the song.
 
@@ -98,7 +106,8 @@ German terms are kept where the child sees or hears them (animal names, item nam
 
 - Today: "Fuchs", 192 eighths per minute, C – Am – Dm – G. A staccato walking bass (root, up, up,
   back), pizzicato stabs on the off-beats 3 and 7, a sly tune that enters after a rest on each
-  bar. Jingle: sneaking up E–G–C, then a pounce on the high G (79), the loudest note of all jingles.
+  bar. Jingle: a rest, two off-beat tiptoes E–G, a held breath, then a pounce up a fourth to C5,
+  the loudest note of all jingles.
 - Feel: tiptoe staccato, short notes with gaps, off-beat entries.
 - Intervals: broken-chord steps (thirds), a jump of a fifth or octave for the pounce.
 - Register: middle, tune around E4–E5; pounce up to G5.
@@ -151,10 +160,10 @@ German terms are kept where the child sees or hears them (animal names, item nam
 
 **Sound and music**
 
-- Today: "Igel", 200 eighths per minute (fastest, with the squirrel), C – F – C – G. A soft
-  woodblock tick-tack on every eighth (low 900 Hz, high 1300 Hz), a muted pluck playing a bouncy
-  tune with repeated notes, a short bass that hops. Jingle: tick, three plucks scurrying up C–E–G,
-  then C6 with a tack.
+- Today: "Igel", 188 eighths per minute (between owl and fox, slower than the squirrel),
+  C – F – C – G. A soft woodblock tick-tack on every eighth (low 900 Hz, high 1300 Hz), a muted
+  pluck playing a bouncy tune with repeated notes, a short bass that hops. Jingle: tick, plucks
+  scurrying up in even eighths G–A–B–C, then the C again with a tack.
 - Feel: busy, even eighths, small and dry.
 - Intervals: repeated notes and small steps; thirds; a sixth at most.
 - Register: middle-high (C5–C6), small instruments.
@@ -208,7 +217,8 @@ away.
 **Sound and music**
 
 - Today: "Spieluhr", 184 eighths per minute, C – Am – F – G. A fixed, singable music-box tune in
-  A A B A with echo, a soft broken chord underneath, a slow bass. Jingle: C–E–G–C on the music box.
+  A A B A with echo, a soft broken chord underneath, a slow bass. Jingle: E (held), G, B, then the
+  half step up to C6 on the music box.
 - Feel: even, legato, like a lullaby on a music box.
 - Intervals: steps and thirds; the B part climbs to C6 and comes back down.
 - Register: high and clear (E5–C6), with a soft bass.
@@ -263,7 +273,7 @@ away.
 
 - Today: "Hase", 196 eighths per minute, C – G – F – G. A chirpy toy piano plays one skip per
   quarter (long, then short at 1.5 eighths), the bass "hops" with a small upward bend on root and
-  fifth. Jingle: skip, skip, skip, up: C–E–G–C in long-short rhythm.
+  fifth. Jingle: two skips up the scale (C–D, E–F, long-short), then a jump of a fifth to C6.
 - Feel: swung, bouncy, dotted.
 - Intervals: broken chords up and down, thirds and fourths; a jump of a fourth or fifth when
   excited.
@@ -316,10 +326,10 @@ away.
 
 **Sound and music**
 
-- Today: "Marimba", 200 eighths per minute, C – G – Am – F. Bouncing marimba arpeggios on every
-  eighth, a syncopated bass (beats 0, 3, 4), a whisper of shaker on the off-beats; every second
-  time through, notes jump up an octave and a short tune appears. Jingle: C–E–G on marimba, then C6
-  over a G.
+- Today: "Marimba", 200 eighths per minute (the fastest), C – G – Am – F, answered by
+  Am – F – C – G in the second half. Bouncing marimba arpeggios on every eighth, a syncopated bass
+  (beats 0, 3, 4), a whisper of shaker on the off-beats; in the second half, notes jump up an
+  octave and a short tune appears. Jingle: a quick C–G, a pause, then C and the octave jump to C6.
 - Feel: quick, light, a little syncopated.
 - Intervals: broken-chord thirds, sudden octave jumps as its quirk.
 - Register: middle to high (C4–C6), woody.
@@ -373,7 +383,8 @@ away.
 
 - Today: "Lagerfeuer", 176 eighths per minute, C – F – Am – G. Strummed ukulele (down, -, down,
   up, -, up, down, up), box-drum thumps on 1 and 3, a whistled tune of long notes every second
-  time through. Jingle: a strum, then three rising plucks E–G–C.
+  time through. Jingle: a strum on G with a thump, one low pluck E4, then a long whistled C5 a
+  sixth above it over a soft C strum.
 - Feel: relaxed, warm strumming groove.
 - Intervals: long notes from the chord, steps and thirds; no jumps beyond an octave.
 - Register: middle and warm; the lowest bass and thump.
@@ -429,7 +440,7 @@ away.
 
 - Today: "Koala", 152 eighths per minute (the slowest), F – C – Am – G. A warm, slowly breathing
   pad, a bass rocking in a lazy 3 + 3 + 2, a breathy flute singing a slow lullaby of three notes per
-  bar. Jingle: a soft chord swells while the flute climbs C–E–G–C.
+  bar. Jingle: a soft chord swells while the flute lazily climbs G–A, then a third up to a long C5.
 - Feel: lazy rocking, long notes, the 3 + 3 + 2 sway.
 - Intervals: steps, thirds and an occasional falling fourth; slow downward contours.
 - Register: middle (E4–F5), soft and breathy.
@@ -458,7 +469,7 @@ away.
 | Animal       | Tempo (eighths/min) | Main instrument    | Movement verb | Signature colour | Item            | Energy |
 | ------------ | ------------------- | ------------------ | ------------- | ---------------- | --------------- | ------ |
 | Fuchs        | 192                 | Pizzicato strings  | sneak, pounce | `#e98a3e`        | Schneeflocke    | high   |
-| Igel         | 200                 | Woodblock, pluck   | trundle, roll | `#7a5638`        | Ahornblatt      | medium |
+| Igel         | 188                 | Woodblock, pluck   | trundle, roll | `#7a5638`        | Ahornblatt      | medium |
 | Eule         | 184                 | Music box          | glide, flap   | `#9a7048`        | Wolke           | low    |
 | Hase         | 196                 | Toy piano          | skip, hop     | `#d8cdc1`        | Kleeblatt       | high   |
 | Eichhörnchen | 200                 | Marimba            | scamper       | `#c4633a`        | Haselnuss       | high   |
@@ -503,11 +514,6 @@ widen these differences, not narrow them.
   do not express any persona yet.
 - **Song names don't match animals.** Three songs are named by style (`spieluhr` for the owl,
   `marimbaSong` for the squirrel, `lagerfeuer` for the bear), the rest by animal.
-- **Same tempo for hedgehog and squirrel** (200). Their timbres differ, but the energy levels are
-  close; the hedgehog could drop to about 188 to sit between fox and squirrel.
-- **All jingles end on the same C–E–G–C.** It is the shared "next corner" sign, but the animals
-  are told apart only by timbre and rhythm. Keep it that way on purpose, or give each animal its
-  own final interval.
 - **Item names are not shown as text.** The German item names here are working names; the app
   shows only the drawings.
 - **Koala in a European forest.** Eucalyptus and a koala are not native to the forest; fine for a
