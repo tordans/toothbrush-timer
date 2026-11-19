@@ -37,12 +37,37 @@ pictures.
 
 Each style below uses one or both.
 
+## How a prompt is written
+
+Every shortcut uses the Image Playground style **Illustration** and one prompt (the text in
+"Bild erstellen"). Each prompt is a shared **base** (watercolour picture-book look, happy faces,
+eyes looking ahead) followed by the style's hidden things and what is worn. **The exact prompts are
+in [kurzbefehle.md](kurzbefehle.md)**, where the build script reads them; this document says what
+each style is meant to show. The prompts were tried on test pictures (penguin and owl from
+`/Library/User Pictures`) on 19 November 2026, macOS 27.2.1. Family photos were not used for this
+test, so how faces come out per theme is still to be seen.
+
+What Image Playground accepts, learned from the tests:
+
+- **No words for people.** "child wearing bunny ears" is refused ("Versuche es mit einer anderen
+  Beschreibung"). Write only the thing: "bunny ears", "red santa hat". Image Playground puts it on
+  the person in the photo by itself.
+- **English, short phrases separated by commas** work; the longest prompt (Wichtel, about 40
+  words) still went through.
+- **Without the base,** the picture is flat and plain; with it, watercolour and warm light.
+  "both eyes looking straight ahead" is kept because it stopped the squinting in family photos.
+- **Numbers are loose.** "three little gnomes" gave five or six. Fine for a Wimmelbild.
+- **"Hidden" is loose too.** Eggs and pumpkins tend to stand in a row along the bottom rather than
+  being tucked away.
+- Each picture takes 7 to 20 seconds and comes out 1024 × 1024.
+
 ## Everyday style
 
 - **Intention:** a cheerful cartoon version of a real family moment.
 - **Image Playground style:** Illustration (2D) or Animation (3D); one per family, kept the same
   across weeks.
 - **Adds:** nothing.
+- **Shortcut:** „Zahnputz-Bild Alltag“.
 
 ## Wichtel (Advent weeks)
 
@@ -52,12 +77,15 @@ Each style below uses one or both.
   presents.
 - **Wear:** none, so the Wichtel stay the surprise.
 - **Mood:** cosy, warm light, fairy lights, a bit of fir green.
+- **Shortcut:** „Zahnputz-Bild Wichtel“. Test: gnomes peek from both sides, door in the
+  background, presents on the floor.
 
 ## Nikolaus (week of 6 December)
 
 - **Intention:** the boots are filled tonight.
 - **Hidden things:** a pair of boots with oranges, nuts and a chocolate figure; a few stars.
 - **Wear:** the child wears a red Nikolaus hat with white trim.
+- **Shortcut:** „Zahnputz-Bild Nikolaus“. Test: hat on the head, filled boots beside, stars.
 
 ## Weihnachten (week of 24 December)
 
@@ -65,6 +93,7 @@ Each style below uses one or both.
 - **Hidden things:** baubles, small presents, a star, a few snowflakes outside the window.
 - **Wear:** the child (or all children) wears a red Zipfelmütze; adults may wear one too.
 - **Mood:** golden candle light, fir branches.
+- **Shortcut:** „Zahnputz-Bild Weihnachten“. Note: the hat looks much like the Nikolaus hat.
 
 ## Silvester / Neujahr (week of 31 December)
 
@@ -72,6 +101,7 @@ Each style below uses one or both.
 - **Hidden things:** colourful streamers, confetti, a lucky clover, a little lucky pig.
 - **Wear:** a paper party hat.
 - **Not:** no loud fireworks or explosions in the scene; at most soft sparkles in the sky.
+- **Shortcut:** „Zahnputz-Bild Silvester“. Test: party hat, clover and pig appear, no fireworks.
 
 ## Ostern (Easter week)
 
@@ -79,6 +109,8 @@ Each style below uses one or both.
 - **Hidden things:** 4–8 colourful painted eggs hidden around the scene, a small Easter bunny
   peeking out, spring flowers.
 - **Wear:** the child wears bunny ears.
+- **Shortcut:** „Zahnputz-Bild Ostern“. Test: ears and the peeking bunny work; the eggs line the
+  bottom edge instead of being hidden.
 
 ## Halloween (week of 31 October)
 
@@ -87,6 +119,7 @@ Each style below uses one or both.
   black cat, autumn leaves.
 - **Wear:** the child wears a witch hat or cat ears.
 - **Not:** see "Nothing scary" above. Pumpkins smile.
+- **Shortcut:** „Zahnputz-Bild Halloween“. Test: smiling pumpkins and ghosts, nothing scary.
 
 ## Ideas for further occasions
 
@@ -100,9 +133,12 @@ From the list in [occasions.md](occasions.md), short so they can be built when w
 
 ## How it reaches the shortcut
 
-Whether this becomes one shortcut that asks for the style each run or one shortcut per style is
-decided in [research/kurzbefehle-verteilen.md](research/kurzbefehle-verteilen.md). Either way, the
-prompt text of each style comes from this document. Image Playground only accepts a short
-description, so each style's prompt is the "Hidden things" and "Wear" lines in a few words, for
-example for Easter: "colourful Easter eggs hidden around, child wearing bunny ears, spring
-flowers".
+**One shortcut per style**, named „Zahnputz-Bild Alltag“, „Zahnputz-Bild Wichtel“ and so on.
+Why, following [research/kurzbefehle-verteilen.md](research/kurzbefehle-verteilen.md): a shared
+iCloud link is a snapshot, so a style menu would force every family to fetch everything again
+whenever a theme is added. With one shortcut per style, a new occasion is just a new card in the
+parents' area, and a mistake in one prompt touches only that style. Parents only install a
+theme when its week comes, and the share menu shows clear names instead of an extra question.
+
+How each shortcut is built, its exact prompt, where it saves and its iCloud link are in
+[kurzbefehle.md](kurzbefehle.md).

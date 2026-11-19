@@ -217,6 +217,28 @@ Kurzbefehle, Importfragen?). Importfrage an Stil und an den `Authorization`-Head
 der alte Link weiter? POST mit Datei an einen Testendpunkt auf iOS 26 und 27. Ein Gerät ohne Apple
 Intelligence: welche Fehlermeldung kommt?
 
+### Getestet am Mac (19. November 2026, macOS 27.2.1)
+
+Mit eigenen Test-Kurzbefehlen, Import per signierter Datei und einem lokalen Testserver
+(`127.0.0.1`). Nicht getestet: alles mit iCloud-Link (der Link wäre öffentlich, das entscheidet
+der Inhaber), alles auf dem iPad (von hier nicht erreichbar), ein Gerät ohne Apple Intelligence.
+
+- **Importfragen funktionieren, auch an „Bild erstellen“.** Beim Hinzufügen erscheint ein Fenster
+  „… – Konfiguration“. Getestet: Frage an der Adresse (Textfeld), an den Headern (eine
+  Schlüssel-Wert-Tabelle, die man bearbeiten kann), an der Anweisung von „Bild erstellen“
+  (Textfeld) und an dessen Stil (Auswahlfeld mit den Image-Playground-Stilen). Der in Abschnitt 3
+  gemeldete Fehler (Frage erscheint nicht) trat am Mac nicht auf. Über einen iCloud-Link und aus
+  der PWA heraus ist das weiter ungeprüft.
+- **Hochladen geht, aber nur als Datei im Anfrage-Inhalt.** „Inhalt von URL abrufen“, POST,
+  Anfrage-Inhalt „Datei“ mit dem Bild: Der Server bekam das ganze PNG (1,5 MB) mit
+  `Content-Type: image/png` und dem Header `Authorization: Bearer …`. Der Header aus der Tabelle
+  kommt also an.
+- **Ein Formular mit Dateifeld kam leer an** (`application/x-www-form-urlencoded`, 0 Byte). Das
+  kann an meiner selbst gebauten Datei liegen; ein von Hand im Editor gebautes Formularfeld
+  „Datei“ ist nicht getestet. Für unseren Endpunkt heißt das: **den rohen Bildinhalt annehmen**
+  (`POST` mit `image/png` oder `image/jpeg` im Körper), nicht `multipart/form-data` voraussetzen.
+- **Die Bildgröße** lag bei diesen Tests bei 1024 × 1024 und 0,8 bis 1,5 MB (PNG).
+
 ## Quellen
 
 - Apple, Kurzbefehle: Share shortcuts: <https://support.apple.com/guide/shortcuts/apdf01f8c054/ios>
