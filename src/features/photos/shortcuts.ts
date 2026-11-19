@@ -3,7 +3,8 @@ import type { OccasionId } from './occasions'
 /**
  * The Apple Shortcuts that turn a family photo into a reward picture, one per style (see
  * docs/photo-styles.md and docs/kurzbefehle-eltern.md). The repo is the source of truth: the
- * style, prompt and steps of each shortcut are described there, and its iCloud link is kept here.
+ * style, prompt and steps of each shortcut are described there. The links are listed in
+ * docs/kurzbefehle.md first and mirrored here.
  * A link is public (anyone with it can read the shortcut, Apple keeps a copy), so the shortcuts
  * hold no names and no keys. `link: null` shows "Link folgt" until the shortcut is shared.
  */

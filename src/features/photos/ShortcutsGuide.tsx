@@ -26,8 +26,8 @@ export function ShortcutsGuide() {
         <li>Tippt auf Teilen und wählt den Kurzbefehl, zum Beispiel „Zahnputz-Bild Alltag“.</li>
         <li>Beim ersten Mal fragt das Gerät nach Erlaubnis. Tippt auf „Erlauben“.</li>
         <li>
-          Nach 10 bis 30 Sekunden liegt das Bild in der Dateien-App in iCloud Drive im Ordner
-          „Zahnputz-Fotos“.
+          Nach 10 bis 30 Sekunden liegt das Bild in der App Dateien unter iCloud Drive → Kurzbefehle
+          → Zahnputz-Fotos, in einem Ordner je Stil.
         </li>
         <li>Ladet es oben unter „Belohnungsfotos“ hoch und wählt, für welche Woche es ist.</li>
       </Steps>
