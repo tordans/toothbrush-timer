@@ -4,6 +4,9 @@
  * - a short phrase at each section change, in the instrument of the chosen song,
  * - a little bell melody at the end.
  *
+ * Music and sounds have their own volume (bus): the jingles and bells still play when the music is
+ * off, and the music steps back while a jingle plays. A soft limiter on the output catches peaks.
+ *
  * The AudioContext must be created from a tap (browser autoplay rules).
  */
 
@@ -14,12 +17,16 @@ type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext }
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
 
 const MUSIC_LEVEL = 0.7
+/** While a jingle plays, the music steps back to 40 % (about 8 dB quieter). */
+const DUCKED_LEVEL = MUSIC_LEVEL * 0.4
 
 class BrushingAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private musicBus: GainNode | null = null
   private echo: DelayNode | null = null
+  private sfxBus: GainNode | null = null
+  private sfxEcho: DelayNode | null = null
   private musicOn = false
   private animal: Animal = 'owl'
   private step = 0
@@ -37,30 +44,49 @@ class BrushingAudio {
       this.ctx = new Ctor()
       this.master = this.ctx.createGain()
       this.master.gain.value = 0.9
-      this.master.connect(this.ctx.destination)
+      // A gentle safety limiter: children's devices are often turned up high.
+      const limiter = this.ctx.createDynamicsCompressor()
+      limiter.threshold.value = -6
+      limiter.knee.value = 6
+      limiter.ratio.value = 8
+      limiter.attack.value = 0.003
+      limiter.release.value = 0.25
+      this.master.connect(limiter)
+      limiter.connect(this.ctx.destination)
 
       this.musicBus = this.ctx.createGain()
       this.musicBus.gain.value = 0
-      this.echo = this.ctx.createDelay(2)
-      this.echo.delayTime.value = 0.42
-      const feedback = this.ctx.createGain()
-      feedback.gain.value = 0.35
-      const echoTone = this.ctx.createBiquadFilter()
-      echoTone.type = 'lowpass'
-      echoTone.frequency.value = 1800
-      this.echo.connect(echoTone)
-      echoTone.connect(feedback)
-      feedback.connect(this.echo)
-      echoTone.connect(this.musicBus)
       this.musicBus.connect(this.master)
+      this.echo = this.softEcho(this.ctx, this.musicBus)
+
+      this.sfxBus = this.ctx.createGain()
+      this.sfxBus.gain.value = 1
+      this.sfxBus.connect(this.master)
+      this.sfxEcho = this.softEcho(this.ctx, this.sfxBus)
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume()
   }
 
+  /** A soft echo into `out`: a delay whose repeats get darker and quieter. */
+  private softEcho(ctx: AudioContext, out: AudioNode) {
+    const echo = ctx.createDelay(2)
+    echo.delayTime.value = 0.42
+    const feedback = ctx.createGain()
+    feedback.gain.value = 0.35
+    const tone = ctx.createBiquadFilter()
+    tone.type = 'lowpass'
+    tone.frequency.value = 1800
+    echo.connect(tone)
+    tone.connect(feedback)
+    feedback.connect(echo)
+    tone.connect(out)
+    return echo
+  }
+
   private bell(freq: number, when: number, level: number, length = 2.8) {
     const ctx = this.ctx
-    const master = this.master
-    if (!ctx || !master) return
+    const out = this.sfxBus
+    if (!ctx || !out) return
     // Partials of a small bell; higher ones fade faster.
     const partials: [number, number, number][] = [
       [1, 1, 1],
@@ -77,7 +103,7 @@ class BrushingAudio {
       env.gain.exponentialRampToValueAtTime(level * gain, when + 0.01)
       env.gain.exponentialRampToValueAtTime(0.0001, when + length * decay)
       osc.connect(env)
-      env.connect(master)
+      env.connect(out)
       osc.start(when)
       osc.stop(when + length * decay + 0.05)
     }
@@ -110,9 +136,16 @@ class BrushingAudio {
     this.animal = animal
   }
 
+  /** The song's instruments, playing into the music bus. */
   private voices(): Voices | null {
     if (!this.ctx || !this.musicBus || !this.echo) return null
     return { ctx: this.ctx, out: this.musicBus, echo: this.echo }
+  }
+
+  /** The same instruments, playing into the sound bus (for jingles). */
+  private sfxVoices(): Voices | null {
+    if (!this.ctx || !this.sfxBus || !this.sfxEcho) return null
+    return { ctx: this.ctx, out: this.sfxBus, echo: this.sfxEcho }
   }
 
   startMusic() {
@@ -153,17 +186,33 @@ class BrushingAudio {
 
   /** Short phrase in the song's instrument: this corner is done, move on to the next. */
   switchJingle() {
-    const v = this.voices()
+    const v = this.sfxVoices()
     if (!v) return
     const song = SONGS[this.animal]
     const eighth = 60 / song.eighthsPerMinute
+    this.sfxEcho?.delayTime.setValueAtTime(eighth * 1.5, v.ctx.currentTime)
     let t = v.ctx.currentTime + 0.02
     if (this.musicOn) {
       // Wait for the next full beat, so the jingle lands in time with the song.
       const stepsToBeat = this.step % 2
       t = Math.max(t, this.nextStepAt + stepsToBeat * eighth)
     }
-    song.jingle(v, t, eighth)
+    const eighths = song.jingle(v, t, eighth)
+    if (this.musicOn) this.duck(t, t + (eighths + 1) * eighth)
+  }
+
+  /** The music steps back under a jingle and comes back over half a second. */
+  private duck(from: number, until: number) {
+    const ctx = this.ctx
+    const bus = this.musicBus
+    if (!ctx || !bus) return
+    const now = ctx.currentTime
+    bus.gain.cancelScheduledValues(now)
+    bus.gain.setValueAtTime(bus.gain.value, now)
+    bus.gain.linearRampToValueAtTime(bus.gain.value, Math.max(now, from - 0.06))
+    bus.gain.linearRampToValueAtTime(DUCKED_LEVEL, Math.max(now, from - 0.01))
+    bus.gain.setValueAtTime(DUCKED_LEVEL, until)
+    bus.gain.linearRampToValueAtTime(MUSIC_LEVEL, until + 0.5)
   }
 
   stopMusic() {

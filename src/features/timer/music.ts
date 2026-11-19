@@ -5,6 +5,11 @@ import type { Animal } from '@/features/family/schema'
  * four-bar chord progression in C major at a walking tempo: lively enough to keep going, but no
  * fast drums and no sharp sounds. Each song has its own corner jingle, played with the same
  * instrument and on its beat, so the jingle sounds like part of the song.
+ *
+ * Every jingle rises and ends on a C, but each animal has its own rhythm and its own last step into
+ * that C, so a child can tell them apart by the tune and not only by the sound:
+ * owl B→C (half step), koala A→C (third), fox G→C (fourth), rabbit F→C (fifth), bear E→C (sixth),
+ * squirrel C→C' (octave jump), hedgehog C–C (the same note twice).
  */
 
 /** MIDI note number to Hz (69 = A4 = 440 Hz). */
@@ -147,8 +152,11 @@ type Song = {
   progression: Chord[]
   /** Plays everything that falls on one eighth note. `step` counts from the song's start. */
   step: (v: Voices, step: number, t: number) => void
-  /** Short rising phrase for a new corner, in the song's instrument. */
-  jingle: (v: Voices, t: number, eighth: number) => void
+  /**
+   * Short rising phrase for a new corner, in the song's instrument. Returns how many eighths it
+   * lasts until its last note, so the music can step back for that long.
+   */
+  jingle: (v: Voices, t: number, eighth: number) => number
 }
 
 const chordAt = (song: Pick<Song, 'progression'>, step: number): Chord =>
@@ -187,15 +195,21 @@ const spieluhr: Song = {
     if (beat === 2 || beat === 6) musicBox(v, chord[beat === 2 ? 1 : 2], t, 0.04, false)
   },
   jingle(v, t, eighth) {
-    ;[72, 76, 79, 84].forEach((n, i) => musicBox(v, n, t + i * eighth, 0.2))
+    // Calm thirds up, then the half step home: E – G – B – C, the first note held.
+    musicBox(v, 76, t, 0.18)
+    musicBox(v, 79, t + 2 * eighth, 0.18)
+    musicBox(v, 83, t + 3 * eighth, 0.16)
+    musicBox(v, 84, t + 4 * eighth, 0.22)
+    return 4
   },
 }
 
-// Marimba: bouncing broken chords over C – G – Am – F, a syncopated bass and a whisper of shaker.
+// Marimba: bouncing broken chords, a syncopated bass and a whisper of shaker. The first half goes
+// C – G – Am – F, the second half answers Am – F – C – G and so leads back to the start.
 const ARPEGGIO = [1, 2, 3, 2, 1, 2, 3, 2]
 const marimbaSong: Song = {
   eighthsPerMinute: 200,
-  progression: ['C', 'G', 'Am', 'F'],
+  progression: ['C', 'G', 'Am', 'F', 'Am', 'F', 'C', 'G'],
   step(v, step, t) {
     const beat = step % 8
     const chord = CHORDS[chordAt(this, step)]
@@ -212,9 +226,12 @@ const marimbaSong: Song = {
     }
   },
   jingle(v, t, eighth) {
-    ;[72, 76, 79].forEach((n, i) => marimba(v, n, t + i * eighth, 0.2, true))
-    marimba(v, 84, t + 3 * eighth, 0.24, true)
-    marimba(v, 79, t + 3 * eighth, 0.12)
+    // A quick burst, a pause, then the octave jump: C – G, … C – C'.
+    marimba(v, 72, t, 0.18)
+    marimba(v, 79, t + eighth, 0.18)
+    marimba(v, 72, t + 3 * eighth, 0.18)
+    marimba(v, 84, t + 4 * eighth, 0.24, true)
+    return 4
   },
 }
 
@@ -229,7 +246,7 @@ const UKULELE: Record<Chord, number[]> = {
 // Down, -, down, up, -, up, down, up
 const STRUM: ('down' | 'up' | null)[] = ['down', null, 'down', 'up', null, 'up', 'down', 'up']
 
-function whistle(v: Voices, midi: number, t: number, length: number) {
+function whistle(v: Voices, midi: number, t: number, length: number, level = 0.06) {
   const osc = v.ctx.createOscillator()
   osc.type = 'sine'
   osc.frequency.value = hz(midi)
@@ -241,8 +258,8 @@ function whistle(v: Voices, midi: number, t: number, length: number) {
   depth.connect(osc.frequency)
   const env = v.ctx.createGain()
   env.gain.setValueAtTime(0.0001, t)
-  env.gain.linearRampToValueAtTime(0.06, t + 0.06)
-  env.gain.setValueAtTime(0.06, t + length * 0.7)
+  env.gain.linearRampToValueAtTime(level, t + 0.06)
+  env.gain.setValueAtTime(level, t + length * 0.7)
   env.gain.exponentialRampToValueAtTime(0.0001, t + length)
   osc.connect(env)
   env.connect(v.out)
@@ -275,11 +292,13 @@ const lagerfeuer: Song = {
     }
   },
   jingle(v, t, eighth) {
-    // A quick strum, then three rising plucks.
-    UKULELE.C.forEach((n, i) => pluck(v, n, t + i * 0.014, 0.12))
-    pluck(v, 76, t + eighth, 0.18, true)
-    pluck(v, 79, t + 2 * eighth, 0.18, true)
-    pluck(v, 84, t + 3 * eighth, 0.22, true)
+    // A warm strum on G, one low pluck, then a long whistled C a sixth above it.
+    UKULELE.G.forEach((n, i) => pluck(v, n, t + i * 0.014, 0.09))
+    thump(v, t, 0.1)
+    pluck(v, 64, t + eighth, 0.16)
+    UKULELE.C.forEach((n, i) => pluck(v, n, t + 2 * eighth + i * 0.014, 0.07))
+    whistle(v, 72, t + 2 * eighth, 3 * eighth, 0.12)
+    return 2
   },
 }
 
@@ -344,10 +363,12 @@ const fox: Song = {
     if (note != null) pizzicato(v, note, t, 0.13, true)
   },
   jingle(v, t, eighth) {
-    // Sneaking up the chord, then a pounce on the top.
-    ;[64, 67, 72].forEach((n, i) => pizzicato(v, n, t + i * eighth, 0.27))
-    pizzicato(v, 79, t + 3 * eighth, 0.36, true)
-    pizzicato(v, 67, t + 3 * eighth, 0.12)
+    // A rest, two tiptoes off the beat, a held breath, then the pounce up a fourth: … E G … C.
+    pizzicato(v, 64, t + eighth, 0.22)
+    pizzicato(v, 67, t + 2 * eighth, 0.22)
+    pizzicato(v, 72, t + 4 * eighth, 0.34, true)
+    pizzicato(v, 60, t + 4 * eighth, 0.12)
+    return 4
   },
 }
 
@@ -412,7 +433,8 @@ const HEDGEHOG_TUNE_B = [
 ]
 
 const hedgehog: Song = {
-  eighthsPerMinute: 200,
+  // A little slower than the squirrel (200), between the owl and the fox: busy, but trundling.
+  eighthsPerMinute: 188,
   progression: HEDGEHOG_PROGRESSION,
   step(v, step, t) {
     const bar = Math.floor(step / 8)
@@ -428,11 +450,12 @@ const hedgehog: Song = {
     if (note != null) mutedPluck(v, note, t, 0.16, true)
   },
   jingle(v, t, eighth) {
-    // Tick-tack, then four little plucks scurrying up.
+    // Little steps scurrying up, even eighths, and the top note twice: G A B C C, tick … tack.
     woodblock(v, t, 0.08, 1300)
-    ;[72, 76, 79].forEach((n, i) => mutedPluck(v, n, t + i * eighth, 0.18))
-    mutedPluck(v, 84, t + 3 * eighth, 0.22, true)
-    woodblock(v, t + 3 * eighth, 0.07, 900)
+    ;[79, 81, 83, 84].forEach((n, i) => mutedPluck(v, n, t + i * eighth, 0.17))
+    mutedPluck(v, 84, t + 4 * eighth, 0.21, true)
+    woodblock(v, t + 4 * eighth, 0.07, 900)
+    return 4
   },
 }
 
@@ -504,11 +527,18 @@ const rabbit: Song = {
     }
   },
   jingle(v, t, eighth) {
-    // Skip, skip, skip, up: long-short, long-short, rising.
-    ;[0, 1.5, 2, 3.5].forEach((at, i) => {
-      toyPiano(v, [72, 76, 79, 84][i] ?? 72, t + at * eighth, i === 3 ? 0.17 : 0.12, true)
-    })
+    // Two skips up the scale (long-short, long-short), then a jump of a fifth: C D, E F, C'.
+    const skips: [number, number][] = [
+      [0, 72],
+      [1.5, 74],
+      [2, 76],
+      [3.5, 77],
+    ]
+    for (const [at, n] of skips) toyPiano(v, n, t + at * eighth, at % 1 === 0 ? 0.13 : 0.09)
+    toyPiano(v, 84, t + 4 * eighth, 0.17, true)
     hop(v, 48, t, 0.09)
+    hop(v, 48, t + 4 * eighth, 0.09)
+    return 4
   },
 }
 
@@ -660,9 +690,12 @@ const koala: Song = {
     }
   },
   jingle(v, t, eighth) {
-    // A soft chord swells while the flute climbs, one note per eighth.
-    pad(v, [64, 67, 72], t, 0.008, 3 * eighth)
-    ;[72, 76, 79, 84].forEach((n, i) => flute(v, n, t + i * eighth, 2.4 * eighth, 0.05))
+    // A soft chord swells while the flute lazily climbs G – A, then a third up to a long C.
+    pad(v, [64, 67, 72], t, 0.008, 4 * eighth)
+    flute(v, 67, t, 1.9 * eighth, 0.05)
+    flute(v, 69, t + 2 * eighth, 0.95 * eighth, 0.05)
+    flute(v, 72, t + 3 * eighth, 3 * eighth, 0.06)
+    return 3
   },
 }
 
