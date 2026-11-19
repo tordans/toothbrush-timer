@@ -15,8 +15,7 @@ import { familyStore, useFamily, useFamilyActions } from '@/features/family/fami
 import { brushingsFor } from '@/features/family/queries'
 import type { Animal as AnimalId, Brushing } from '@/features/family/schema'
 import { Animal } from '@/features/forest/Animal'
-import { EveningLantern, MorningFlower } from '@/features/forest/scenery'
-import { ThoughtBubble } from '@/features/photos/ThoughtBubble'
+import { DoneMoment } from '@/features/forest/DoneMoment'
 import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { brushingAudio } from '@/features/timer/audio'
 import { MouthDial } from '@/features/timer/MouthDial'
@@ -336,45 +335,37 @@ function Done({
   // Only while the child has fields left to uncover; never a "done" state.
   const photo = usePhotoReward(kidId, useNow())
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-center landscape:flex-row landscape:gap-10 landscape:text-left">
-      <div className="flex shrink-0 items-end">
-        <svg
-          viewBox="-90 -190 180 200"
-          className="h-36 w-32 landscape:h-[38vh] landscape:w-auto"
-          aria-hidden="true"
-        >
-          <g className="origin-bottom animate-pop">
-            {evening ? (
-              <EveningLantern x={-14} y={0} lit s={2} />
-            ) : (
-              <MorningFlower x={0} y={0} open s={2} />
-            )}
-          </g>
-        </svg>
-        <div className="relative w-32 landscape:w-[30vh]">
-          <Sparkles />
-          <div className="animate-hop">
-            <Animal animal={animal} />
-          </div>
-          {photo.hasFieldsLeft && (
-            <ThoughtBubble
-              animal={animal}
-              className="pointer-events-none absolute -top-14 left-[55%] w-24 animate-bob landscape:-top-[18vh] landscape:w-[16vh]"
-            />
-          )}
-        </div>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-center sm:gap-5 landscape:flex-row landscape:gap-8 landscape:text-left">
+      <DoneMoment
+        animal={animal}
+        evening={evening}
+        thought={photo.hasFieldsLeft}
+        className="w-[min(94vw,calc((100vh_-_19rem)*1.36))] shrink-0 landscape:w-[min(56vw,calc((100vh_-_7rem)*1.36))]"
+      />
       <div className="flex flex-col items-center gap-3 landscape:items-start">
-        <h1 className="text-4xl font-extrabold sm:text-5xl">Fertig!</h1>
-        <p className="text-xl font-semibold opacity-85">
+        <h1
+          className="animate-fadein text-5xl font-extrabold sm:text-6xl md:text-7xl"
+          style={{ animationDelay: '0.3s' }}
+        >
+          Fertig!
+        </h1>
+        <p
+          className="max-w-md animate-fadein text-xl font-semibold opacity-85 md:text-2xl"
+          style={{ animationDelay: '0.6s' }}
+        >
           Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
         </p>
         {/* Brushing the same morning or evening again brings no new fields: say so, or the
             missing photo button looks like a fault. */}
         {photo.hasWeekPhoto && !photo.hasFieldsLeft && (
-          <p className="text-base font-semibold opacity-75">{repeatHint(evening, earlier)}</p>
+          <p className="max-w-md text-base font-semibold opacity-75">
+            {repeatHint(evening, earlier)}
+          </p>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-3 landscape:justify-start">
+        <div
+          className="flex animate-fadein flex-wrap items-center justify-center gap-3 landscape:justify-start"
+          style={{ animationDelay: '0.9s' }}
+        >
           <Button size="lg" className="text-2xl" onClick={onHome}>
             Zurück in den Wald
           </Button>
@@ -430,40 +421,6 @@ function StopDialog({
           Nicht eintragen
         </button>
       </Card>
-    </div>
-  )
-}
-
-/** Little stars that float up around the animal at the end. */
-function Sparkles() {
-  const stars = [
-    { left: '0%', delay: '0s', size: 18 },
-    { left: '20%', delay: '0.6s', size: 12 },
-    { left: '45%', delay: '1.1s', size: 20 },
-    { left: '70%', delay: '0.3s', size: 14 },
-    { left: '90%', delay: '0.9s', size: 16 },
-    { left: '35%', delay: '1.6s', size: 10 },
-  ]
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-1/3" aria-hidden="true">
-      {stars.map((star) => (
-        <svg
-          key={star.left}
-          viewBox="-10 -10 20 20"
-          className="absolute animate-rise"
-          style={{
-            left: star.left,
-            width: star.size,
-            height: star.size,
-            animationDelay: star.delay,
-          }}
-        >
-          <path
-            d="M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5 Z"
-            fill="#f6c94c"
-          />
-        </svg>
-      ))}
     </div>
   )
 }
