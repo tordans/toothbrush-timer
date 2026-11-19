@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Klanglabor</title>
+    <style>
+      body {
+        font:
+          16px/1.4 system-ui,
+          sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #f6f3ea;
+        color: #2c2a24;
+      }
+      h1 {
+        font-size: 1.3rem;
+      }
+      p {
+        max-width: 40rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #ddd6c4;
+      }
+      .row strong {
+        width: 8rem;
+      }
+      button {
+        font: inherit;
+        min-height: 44px;
+        padding: 0 14px;
+        border-radius: 10px;
+        border: 1px solid #b9ae92;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Klanglabor (nur im Dev-Server)</h1>
+    <p>
+      Jedes Tier: Lied starten und stoppen, Ecken-Jingle allein oder über dem Lied. „Alle Jingles“
+      spielt die sieben Jingles nacheinander, zum Vergleichen.
+    </p>
+    <div id="lab"></div>
+    <script type="module" src="/src/features/timer/sound-lab.ts"></script>
+  </body>
+</html>
