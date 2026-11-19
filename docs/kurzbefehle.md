@@ -17,19 +17,20 @@ All prompts start with the same base:
 
 <!-- build:rows -->
 
-| Name                      | Folder      | Prompt after the base                                                                                                                         | iCloud link |
-| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Zahnputz-Bild Alltag      | Alltag      | `bright cheerful colors, friendly round shapes, little stars and sparkles around`                                                             | –           |
-| Zahnputz-Bild Wichtel     | Wichtel     | `three little gnomes with red pointed hats peeking out from hiding places, tiny door in the wall, small presents, fairy lights, fir branches` | –           |
-| Zahnputz-Bild Nikolaus    | Nikolaus    | `red santa hats with white trim on every head, boots filled with oranges, nuts and chocolate, little golden stars`                            | –           |
-| Zahnputz-Bild Weihnachten | Weihnachten | `red pointed christmas hats on every head, christmas baubles, small presents, warm candle light, fir branches, snowflakes`                    | –           |
-| Zahnputz-Bild Silvester   | Silvester   | `colorful paper party hats on every head, streamers and confetti, four-leaf clover, little pink lucky pig, soft sparkles`                     | –           |
-| Zahnputz-Bild Ostern      | Ostern      | `bunny ears on every head, small colorful easter eggs hidden all around the scene, little bunny peeking out, spring flowers`                  | –           |
-| Zahnputz-Bild Halloween   | Halloween   | `purple witch hats on every head, small smiling pumpkin lanterns, friendly little sheet ghost, small black cat, autumn leaves`                | –           |
+| Name                      | Folder      | Prompt after the base                                                                                                                         | iCloud link                                                       |
+| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Zahnputz-Bild Alltag      | Alltag      | `bright cheerful colors, friendly round shapes, little stars and sparkles around`                                                             | https://www.icloud.com/shortcuts/96e44c0937b74414af04777abe759174 |
+| Zahnputz-Bild Wichtel     | Wichtel     | `three little gnomes with red pointed hats peeking out from hiding places, tiny door in the wall, small presents, fairy lights, fir branches` | https://www.icloud.com/shortcuts/5e9e18f5fd254da992d7b60cf0701bdc |
+| Zahnputz-Bild Nikolaus    | Nikolaus    | `red santa hats with white trim on every head, boots filled with oranges, nuts and chocolate, little golden stars`                            | https://www.icloud.com/shortcuts/df7ddb2ecd454189aa175f6f2bd58434 |
+| Zahnputz-Bild Weihnachten | Weihnachten | `red pointed christmas hats on every head, christmas baubles, small presents, warm candle light, fir branches, snowflakes`                    | https://www.icloud.com/shortcuts/63642e4e828c4463b3d30fac08f62a92 |
+| Zahnputz-Bild Silvester   | Silvester   | `colorful paper party hats on every head, streamers and confetti, four-leaf clover, little pink lucky pig, soft sparkles`                     | https://www.icloud.com/shortcuts/c98e46ac2e2240e7a9c85ce579689caf |
+| Zahnputz-Bild Ostern      | Ostern      | `bunny ears on every head, small colorful easter eggs hidden all around the scene, little bunny peeking out, spring flowers`                  | https://www.icloud.com/shortcuts/d6a935c3ea7340f7bde7f5cdf3bef9e9 |
+| Zahnputz-Bild Halloween   | Halloween   | `purple witch hats on every head, small smiling pumpkin lanterns, friendly little sheet ghost, small black cat, autumn leaves`                | https://www.icloud.com/shortcuts/56e339f1205f4fab8d46a37a229fffde |
 
 <!-- build:end -->
 
-"–" means not shared yet. The parents' area shows a card only for a shortcut with a link.
+"–" means not shared yet. Links were made on 19 November 2026 from the shortcuts built by the script. The same links are in
+`src/features/photos/shortcuts.ts` for the parents' area; change both together.
 
 ## What every shortcut does
 
@@ -79,7 +80,7 @@ same name exists, „Ersetzen“ keeps the old one renamed to „… 2“; delet
 ## Sharing (owner only)
 
 1. In the Kurzbefehle app open the shortcut → Teilen → „iCloud-Link kopieren“.
-2. Put the link in the table above and commit.
+2. Put the link in the table above and in `src/features/photos/shortcuts.ts`, then commit.
 3. After any change to a shortcut, share again and replace the link: a link is a snapshot, and
    families who have the old version keep it until they fetch the new one.
 
