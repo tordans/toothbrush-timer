@@ -49,11 +49,12 @@ export function HomePage() {
   const [gateOpen, setGateOpen] = useState(false)
   const slot = slotForTime(now)
   const light = dayLightForSlot(slot, now)
-  // Name and week stand right on the sky: dark text by day, light text in the evening and at night.
+  // Name and week are plain text right on the sky (only buttons get a pill): dark text with a soft
+  // light halo by day, light text with a dark halo in the evening and at night, readable over trees.
   const labelColor =
     light === 'evening' || light === 'night'
-      ? 'text-cream [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]'
-      : 'text-bark-900 [text-shadow:0_1px_2px_rgb(255_255_255/0.6)]'
+      ? 'text-cream [text-shadow:0_0_6px_rgb(0_0_0/0.5),0_1px_3px_rgb(0_0_0/0.45)]'
+      : 'text-bark-900 [text-shadow:0_0_6px_rgb(255_255_255/0.9),0_1px_2px_rgb(255_255_255/0.8)]'
   useThemeColor(SKY[light][0])
 
   const today = isoDay(now)
@@ -158,9 +159,17 @@ export function HomePage() {
           </div>
           {/* on narrow screens the gear sits above the week switch */}
           <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
-            <div className="flex items-center">
-              {/* Which days the forest shows, between the arrows on one cream pill, so it stays
-                  readable on any sky; the arrows are full 44 px touch targets. */}
+            <div className="flex items-center gap-1.5">
+              {/* Which days the forest shows: plain text, because only buttons sit on a pill. */}
+              <span
+                className={twMerge(
+                  'whitespace-nowrap text-sm font-extrabold sm:text-base',
+                  labelColor,
+                )}
+              >
+                {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
+              </span>
+              {/* the arrows are full 44 px touch targets */}
               <div className="flex items-center rounded-full bg-cream/90 text-bark-800 shadow">
                 <button
                   type="button"
@@ -172,9 +181,6 @@ export function HomePage() {
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <span className="whitespace-nowrap text-sm font-extrabold sm:text-base">
-                  {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
-                </span>
                 <button
                   type="button"
                   aria-label="Woche danach"
