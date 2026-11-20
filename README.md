@@ -8,8 +8,8 @@ corners. UI in German. Home: <https://brush.ingsparks.de> (name: [docs/naming.md
 - **The week is a path through a forest.** Seven clearings, Monday to Sunday. A morning brushing
   opens a flower, an evening brushing lights a lantern. The child's animal waits at today's
   clearing. Earlier weeks can be looked at with the arrows.
-- **The timer:** two minutes in four corners of 30 seconds (top left, top right, bottom right,
-  bottom left, seen like in a mirror). A ring shows the two minutes, the mouth shows the current
+- **The timer:** two minutes in four corners of 30 seconds (top right, top left, bottom left,
+  bottom right of the animal's own mouth, which faces the child). A ring shows the two minutes, the mouth shows the current
   corner. Optional music generated in the browser, one song per animal, with a short jingle
   in the same song at each change; pause, restart, stop. The screen stays on while brushing (Wake Lock, where supported). If the screen
   turns off or the app goes to the background, the timer pauses.

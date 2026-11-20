@@ -15,14 +15,16 @@ export function timelineSeconds(totalSeconds: number): number {
 }
 
 /**
- * Seen like in a mirror: the child's own left is on the left of the screen. The order goes
- * clockwise around the dial, starting at nine o'clock.
+ * `id` and `side` are where the corner sits on the screen; the order goes clockwise around the
+ * dial, starting at nine o'clock. The label names the side of the animal's own mouth, which faces
+ * the child, so the screen's left is the animal's right (as on a dentist's chart). The child
+ * copies the animal and brushes the same side of their own mouth.
  */
 export const SECTIONS = [
-  { id: 'top-left', label: 'Oben links', jaw: 'top', side: 'left' },
-  { id: 'top-right', label: 'Oben rechts', jaw: 'top', side: 'right' },
-  { id: 'bottom-right', label: 'Unten rechts', jaw: 'bottom', side: 'right' },
-  { id: 'bottom-left', label: 'Unten links', jaw: 'bottom', side: 'left' },
+  { id: 'top-left', label: 'Oben rechts', jaw: 'top', side: 'left' },
+  { id: 'top-right', label: 'Oben links', jaw: 'top', side: 'right' },
+  { id: 'bottom-right', label: 'Unten links', jaw: 'bottom', side: 'right' },
+  { id: 'bottom-left', label: 'Unten rechts', jaw: 'bottom', side: 'left' },
 ] as const
 
 export type TimerPosition = {

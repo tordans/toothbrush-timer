@@ -20,7 +20,7 @@ function teeth(from: number, to: number, count: number, rx: number, ry: number) 
   })
 }
 
-// Upper jaw: left half on screen left (seen like in a mirror).
+// Upper jaw: the animal's right half on screen left (its mouth faces the child).
 const QUADRANT_TEETH = {
   'top-left': teeth(185, 268, 5, 62, 50),
   'top-right': teeth(272, 355, 5, 62, 50),

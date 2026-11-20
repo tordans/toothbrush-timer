@@ -55,10 +55,10 @@ describe('timerPosition', () => {
 
   it('has four corners in a continuous order', () => {
     expect(SECTIONS.map((s) => s.label)).toEqual([
-      'Oben links',
       'Oben rechts',
-      'Unten rechts',
+      'Oben links',
       'Unten links',
+      'Unten rechts',
     ])
   })
 })

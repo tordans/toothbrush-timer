@@ -13,9 +13,8 @@ export const ANIMAL_NAMES: Record<AnimalId, string> = {
 type Props = {
   animal: AnimalId
   /**
-   * Brushes the upper or lower teeth (brushing screen). The animal is the child's mirror image:
-   * the brush head sits in the mouth corner on screen left, held by the paw on screen right, as
-   * a child brushes the left side with the right hand. The brushing screen flips the animal for
+   * Brushes the upper or lower teeth (brushing screen). The brush head sits in the mouth
+   * corner on screen left (the animal's own right), held by the paw on screen right. The brushing screen flips the animal for
    * the right side.
    */
   brushing?: 'top' | 'bottom'

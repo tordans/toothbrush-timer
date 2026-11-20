@@ -254,7 +254,7 @@ export function BrushPage() {
             <p className="max-w-sm text-lg font-semibold opacity-80">
               {earlier
                 ? alreadyBrushed(evening, earlier)
-                : 'Oben links, oben rechts, unten rechts, unten links. Bei jedem Gong geht es weiter.'}
+                : 'Oben rechts, oben links, unten links, unten rechts. Bei jedem Gong geht es weiter.'}
             </p>
             <Button size="xl" onClick={start}>
               <PlayIcon className="h-8 w-8" />
@@ -265,7 +265,8 @@ export function BrushPage() {
           <div className={layer(timer.phase === 'running' || timer.phase === 'paused')}>
             <p className="text-base font-bold opacity-75">
               {/* "Gleich:" sits up here, so the big name keeps to one line and one height. */}
-              {position.switching ? 'Wechseln! Gleich:' : `Ecke ${position.sectionIndex + 1} von 4`}
+              {/* Empty while brushing; the line keeps its height so the name does not move. */}
+              {position.switching ? 'Wechseln! Gleich:' : '\u00a0'}
             </p>
             <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
             <p className="text-2xl font-bold tabular-nums opacity-80">
