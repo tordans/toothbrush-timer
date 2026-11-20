@@ -7,7 +7,8 @@
  * Music and sounds have their own volume (bus): the jingles and bells still play when the music is
  * off, and the music steps back while a jingle plays. A soft limiter on the output catches peaks.
  *
- * The AudioContext must be created from a tap (browser autoplay rules).
+ * The AudioContext must be created from a tap (browser autoplay rules). When another app takes the
+ * sound, coming back to the page or the next tap brings it back, with a new context if needed.
  */
 
 import type { Animal } from '@/features/family/schema'
@@ -20,7 +21,7 @@ const MUSIC_LEVEL = 0.7
 /** While a jingle plays, the music steps back to 40 % (about 8 dB quieter). */
 const DUCKED_LEVEL = MUSIC_LEVEL * 0.4
 
-class BrushingAudio {
+export class BrushingAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private musicBus: GainNode | null = null
@@ -32,39 +33,102 @@ class BrushingAudio {
   private step = 0
   private nextStepAt = 0
   private scheduleTimer: ReturnType<typeof setTimeout> | undefined
+  private reviving = false
+  private listening = false
 
-  /** Call from a tap handler. */
+  /**
+   * Call from a tap handler: makes the sound on the first tap, and brings it back after another app
+   * (a call, a video, the microphone) took it. iOS then leaves the context "interrupted" or
+   * "suspended"; if it does not run again, a fresh context replaces it.
+   */
   unlock() {
-    if (!this.ctx) {
-      const Ctor = window.AudioContext ?? (window as WebkitWindow).webkitAudioContext
-      if (!Ctor) return
-      // iOS mutes Web Audio with the silent switch unless the session is "playback".
-      const nav = navigator as AudioSessionNavigator
-      if (nav.audioSession) nav.audioSession.type = 'playback'
-      this.ctx = new Ctor()
-      this.master = this.ctx.createGain()
-      this.master.gain.value = 0.9
-      // A gentle safety limiter: children's devices are often turned up high.
-      const limiter = this.ctx.createDynamicsCompressor()
-      limiter.threshold.value = -6
-      limiter.knee.value = 6
-      limiter.ratio.value = 8
-      limiter.attack.value = 0.003
-      limiter.release.value = 0.25
-      this.master.connect(limiter)
-      limiter.connect(this.ctx.destination)
-
-      this.musicBus = this.ctx.createGain()
-      this.musicBus.gain.value = 0
-      this.musicBus.connect(this.master)
-      this.echo = this.softEcho(this.ctx, this.musicBus)
-
-      this.sfxBus = this.ctx.createGain()
-      this.sfxBus.gain.value = 1
-      this.sfxBus.connect(this.master)
-      this.sfxEcho = this.softEcho(this.ctx, this.sfxBus)
+    const ctx = this.ctx
+    if (!ctx || ctx.state === 'closed') {
+      this.build()
+      return
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume()
+    if (ctx.state === 'running' || this.reviving) return
+    this.reviving = true
+    void ctx
+      .resume()
+      .catch(() => undefined)
+      .then(() => {
+        this.reviving = false
+        if (this.ctx === ctx && ctx.state !== 'running') this.rebuild()
+      })
+  }
+
+  /** Tries to resume without a tap; if the browser refuses, the next tap does it (see listen). */
+  private wake() {
+    const ctx = this.ctx
+    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') {
+      void ctx.resume().catch(() => undefined)
+    }
+  }
+
+  /** Coming back to the page, and any tap, bring a stopped sound back. */
+  private listen() {
+    if (this.listening) return
+    this.listening = true
+    const wake = () => this.wake()
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') wake()
+    })
+    window.addEventListener('pageshow', wake)
+    window.addEventListener('focus', wake)
+    const tap = () => {
+      if (this.ctx && this.ctx.state !== 'running') this.unlock()
+    }
+    for (const type of ['pointerdown', 'touchend']) {
+      document.addEventListener(type, tap, { capture: true, passive: true })
+    }
+  }
+
+  /** A new context with its volume buses; music that was on goes on where it was. */
+  private build() {
+    const Ctor = window.AudioContext ?? (window as WebkitWindow).webkitAudioContext
+    if (!Ctor) return
+    // iOS mutes Web Audio with the silent switch unless the session is "playback".
+    const nav = navigator as AudioSessionNavigator
+    if (nav.audioSession) nav.audioSession.type = 'playback'
+    const ctx = new Ctor()
+    this.ctx = ctx
+    this.master = ctx.createGain()
+    this.master.gain.value = 0.9
+    // A gentle safety limiter: children's devices are often turned up high.
+    const limiter = ctx.createDynamicsCompressor()
+    limiter.threshold.value = -6
+    limiter.knee.value = 6
+    limiter.ratio.value = 8
+    limiter.attack.value = 0.003
+    limiter.release.value = 0.25
+    this.master.connect(limiter)
+    limiter.connect(ctx.destination)
+
+    this.musicBus = ctx.createGain()
+    this.musicBus.gain.value = this.musicOn ? MUSIC_LEVEL : 0
+    this.musicBus.connect(this.master)
+    this.echo = this.softEcho(ctx, this.musicBus)
+
+    this.sfxBus = ctx.createGain()
+    this.sfxBus.gain.value = 1
+    this.sfxBus.connect(this.master)
+    this.sfxEcho = this.softEcho(ctx, this.sfxBus)
+
+    ctx.addEventListener('statechange', () => this.wake())
+    this.listen()
+    if (ctx.state !== 'running') void ctx.resume().catch(() => undefined)
+    if (this.musicOn) {
+      clearTimeout(this.scheduleTimer)
+      this.playFrom(ctx.currentTime + 0.1)
+    }
+  }
+
+  /** Throws the dead context away and builds a new one. */
+  private rebuild() {
+    const old = this.ctx
+    if (old && old.state !== 'closed') void old.close().catch(() => undefined)
+    this.build()
   }
 
   /** A soft echo into `out`: a delay whose repeats get darker and quieter. */
@@ -158,12 +222,14 @@ class BrushingAudio {
     bus.gain.linearRampToValueAtTime(MUSIC_LEVEL, ctx.currentTime + 1.5)
     // Each start (also after a pause) begins the song from the top.
     this.step = 0
+    this.playFrom(ctx.currentTime + 0.1)
+  }
+
+  /** Plans the song from the current step on, starting at `at`. */
+  private playFrom(at: number) {
     // Echo on the dotted eighth, so it bounces in time.
-    this.echo?.delayTime.setValueAtTime(
-      (60 / SONGS[this.animal].eighthsPerMinute) * 1.5,
-      ctx.currentTime,
-    )
-    this.nextStepAt = ctx.currentTime + 0.1
+    this.echo?.delayTime.setValueAtTime((60 / SONGS[this.animal].eighthsPerMinute) * 1.5, at)
+    this.nextStepAt = at
     this.schedule()
   }
 
@@ -176,7 +242,14 @@ class BrushingAudio {
     if (!v || !this.musicOn) return
     const song = SONGS[this.animal]
     const eighth = 60 / song.eighthsPerMinute
-    while (this.nextStepAt < v.ctx.currentTime + 0.25) {
+    const now = v.ctx.currentTime
+    // If the timers stalled while the audio clock ran on, skip the missed notes and stay in time.
+    if (this.nextStepAt < now) {
+      const missed = Math.ceil((now - this.nextStepAt) / eighth)
+      this.step += missed
+      this.nextStepAt += missed * eighth
+    }
+    while (this.nextStepAt < now + 0.25) {
       song.step(v, this.step, this.nextStepAt)
       this.step++
       this.nextStepAt += eighth
