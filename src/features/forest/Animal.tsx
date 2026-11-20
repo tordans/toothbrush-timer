@@ -10,6 +10,17 @@ export const ANIMAL_NAMES: Record<AnimalId, string> = {
   koala: 'Koala',
 }
 
+/** The name with its article, to start a sentence: "Der Fuchs putzt oben rechts." */
+export const ANIMAL_SUBJECTS: Record<AnimalId, string> = {
+  fox: 'Der Fuchs',
+  hedgehog: 'Der Igel',
+  owl: 'Die Eule',
+  rabbit: 'Der Hase',
+  squirrel: 'Das Eichhörnchen',
+  bear: 'Der Bär',
+  koala: 'Der Koala',
+}
+
 type Props = {
   animal: AnimalId
   /**

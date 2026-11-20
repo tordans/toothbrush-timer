@@ -14,7 +14,7 @@ import { Button, Card } from '@/components/ui'
 import { familyStore, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { brushingsFor } from '@/features/family/queries'
 import type { Brushing } from '@/features/family/schema'
-import { Animal } from '@/features/forest/Animal'
+import { Animal, ANIMAL_SUBJECTS } from '@/features/forest/Animal'
 import { DoneMoment } from '@/features/forest/DoneMoment'
 import { usePhotoReward } from '@/features/photos/use-photo-reward'
 import { brushingAudio } from '@/features/timer/audio'
@@ -159,6 +159,7 @@ export function BrushPage() {
   const { position } = timer
   const section = SECTIONS[position.sectionIndex]
   const corner = section ?? SECTIONS[0]
+  const subject = kid ? ANIMAL_SUBJECTS[kid.animal] : 'Dein Tier'
   const evening = slot === 'evening'
   const done = timer.phase === 'done'
   // The top colours of the two backgrounds below (night and #bfe3f2).
@@ -254,7 +255,7 @@ export function BrushPage() {
             <p className="max-w-sm text-lg font-semibold opacity-80">
               {earlier
                 ? alreadyBrushed(evening, earlier)
-                : 'Oben rechts, oben links, unten links, unten rechts. Bei jedem Gong geht es weiter.'}
+                : `${subject} putzt oben rechts, oben links, unten links, unten rechts. Putz einfach mit! Bei jedem Gong geht es weiter.`}
             </p>
             <Button size="xl" onClick={start}>
               <PlayIcon className="h-8 w-8" />
@@ -265,8 +266,8 @@ export function BrushPage() {
           <div className={layer(timer.phase === 'running' || timer.phase === 'paused')}>
             <p className="text-base font-bold opacity-75">
               {/* "Gleich:" sits up here, so the big name keeps to one line and one height. */}
-              {/* Empty while brushing; the line keeps its height so the name does not move. */}
-              {position.switching ? 'Wechseln! Gleich:' : '\u00a0'}
+              {/* The side is the animal's own side, so the line names the animal. */}
+              {position.switching ? 'Wechseln! Gleich:' : `${subject} putzt`}
             </p>
             <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
             <p className="text-2xl font-bold tabular-nums opacity-80">
