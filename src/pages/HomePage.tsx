@@ -354,7 +354,7 @@ function AnimalDialog({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <Card className="m-auto flex w-full max-w-lg animate-fadein flex-col gap-4">
+      <Card className="m-auto flex w-full max-w-2xl animate-fadein flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-2xl font-extrabold">Wer putzt mit dir, {name}?</h2>
           {/* Tapping an animal takes it at once; this only closes without a change. */}

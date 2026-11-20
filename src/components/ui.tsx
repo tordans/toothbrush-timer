@@ -65,7 +65,13 @@ export function AnimalPicker({
   onChange: (animal: AnimalId) => void
 }) {
   return (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7" role="radiogroup" aria-label="Tier">
+    // Flex with centered wrapping: seven animals leave a short last row, which then sits in the middle.
+    <div
+      lang="de"
+      className="flex flex-wrap justify-center gap-2 sm:gap-3"
+      role="radiogroup"
+      aria-label="Tier"
+    >
       {ANIMALS.map((animal) => (
         <button
           key={animal}
@@ -74,14 +80,16 @@ export function AnimalPicker({
           aria-checked={value === animal}
           onClick={() => onChange(animal)}
           className={twMerge(
-            'flex flex-col items-center rounded-2xl border-4 p-1.5 text-sm font-bold transition active:scale-95',
+            'flex w-[calc((100%-1rem)/3)] min-w-0 cursor-pointer touch-manipulation select-none flex-col items-center gap-1 rounded-3xl border-4 p-2 transition active:scale-95 sm:w-[calc((100%-2.25rem)/4)] sm:p-3',
             value === animal
-              ? 'border-sun bg-white text-bark-900'
+              ? 'border-sun bg-white text-bark-900 shadow-md'
               : 'border-transparent bg-moss-50 text-bark-700',
           )}
         >
-          <Animal animal={animal} className="h-14 w-14" />
-          {ANIMAL_NAMES[animal]}
+          <Animal animal={animal} className="aspect-square h-auto w-full" />
+          <span className="w-full hyphens-auto break-words text-center text-xs font-bold leading-tight sm:text-sm">
+            {ANIMAL_NAMES[animal]}
+          </span>
         </button>
       ))}
     </div>
