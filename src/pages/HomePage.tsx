@@ -79,7 +79,6 @@ export function HomePage() {
       photoFieldsLeft: photo.daysWithFields.has(key),
     }
   })
-  const brushedNow = kid ? isBrushed(family, kid.id, today, slot) : false
 
   const openParents = () =>
     void navigate({ to: '/eltern', search: gateTarget === 'fotos' ? { tab: 'fotos' } : {} })
@@ -108,153 +107,151 @@ export function HomePage() {
           }
         />
 
-        {/* top bar */}
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
-          {/* min-w-0: names shrink first, so the parents' gear always stays on screen */}
-          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-            {kid && (
-              <>
-                {/* The calendar: all months of this child. */}
-                <button
-                  type="button"
-                  aria-label={`Alle Monate von ${kid.name} ansehen`}
-                  onClick={() => void navigate({ to: '/uebersicht', search: { kid: kid.id } })}
-                  className="flex h-12 w-12 shrink-0 cursor-pointer select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
-                >
-                  <CalendarIcon className="h-6 w-6" />
-                </button>
-                {/* The photo of the week, when there is one. */}
-                {photo.hasWeekPhoto && (
+        {/* Top of the sky: the buttons row, and below it the start button. The row stays clear of
+            the dark shade iPadOS draws behind the status bar. */}
+        <div className="absolute inset-x-0 top-0 flex flex-col gap-3 pt-[max(1.25rem,calc(env(safe-area-inset-top)+1rem))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
+          <div className="flex items-start justify-between gap-2">
+            {/* min-w-0: names shrink first, so the parents' gear always stays on screen */}
+            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+              {kid && (
+                <>
+                  {/* The calendar: all months of this child. */}
                   <button
                     type="button"
-                    aria-label="Foto der Woche ansehen"
-                    onClick={() => void openPhoto(photo.week, kid.id)}
-                    className="flex h-12 w-12 shrink-0 cursor-pointer touch-manipulation select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
+                    aria-label={`Alle Monate von ${kid.name} ansehen`}
+                    onClick={() => void navigate({ to: '/uebersicht', search: { kid: kid.id } })}
+                    className="flex h-12 w-12 shrink-0 cursor-pointer select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
                   >
-                    <FrameIcon className="h-6 w-6" />
+                    <CalendarIcon className="h-6 w-6" />
                   </button>
-                )}
-                {/* The animal: same as tapping the animal in the forest, opens the animal choice. */}
-                <button
-                  type="button"
-                  aria-label={`Tier für ${kid.name} wählen`}
-                  onClick={() => setPickingAnimal(true)}
-                  className="shrink-0 cursor-pointer select-none rounded-full shadow transition active:scale-90"
-                >
-                  <AnimalBadge animal={kid.animal} className="h-12 w-12 bg-white" />
-                </button>
-                {/* The name is only a label. */}
+                  {/* The photo of the week, when there is one. */}
+                  {photo.hasWeekPhoto && (
+                    <button
+                      type="button"
+                      aria-label="Foto der Woche ansehen"
+                      onClick={() => void openPhoto(photo.week, kid.id)}
+                      className="flex h-12 w-12 shrink-0 cursor-pointer touch-manipulation select-none items-center justify-center rounded-full bg-cream text-bark-700 shadow transition active:scale-90"
+                    >
+                      <FrameIcon className="h-6 w-6" />
+                    </button>
+                  )}
+                  {/* The animal: same as tapping the animal in the forest, opens the animal choice. */}
+                  <button
+                    type="button"
+                    aria-label={`Tier für ${kid.name} wählen`}
+                    onClick={() => setPickingAnimal(true)}
+                    className="shrink-0 cursor-pointer select-none rounded-full shadow transition active:scale-90"
+                  >
+                    <AnimalBadge animal={kid.animal} className="h-12 w-12 bg-white" />
+                  </button>
+                  {/* The name is only a label. */}
+                  <span
+                    className={twMerge(
+                      'min-w-0 self-center truncate text-xl font-extrabold',
+                      labelColor,
+                    )}
+                  >
+                    {kid.name}
+                  </span>
+                </>
+              )}
+              {/* With several children: the others, to switch. */}
+              {kids
+                .filter((k) => k.id !== kid?.id)
+                .map((k) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    aria-label={`${k.name} auswählen`}
+                    onClick={() => setActiveKid(k.id)}
+                    className="flex min-w-0 max-w-full cursor-pointer select-none items-center gap-2 rounded-full bg-cream/75 py-1 pl-1 pr-3 text-lg font-extrabold text-bark-800 shadow transition active:scale-95"
+                  >
+                    <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
+                    <span className="truncate">{k.name}</span>
+                  </button>
+                ))}
+            </div>
+            {/* on narrow screens the gear sits above the week switch */}
+            <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
+              <div className="flex items-center gap-1.5">
+                {/* Which days the forest shows: plain text, because only buttons sit on a pill. */}
                 <span
                   className={twMerge(
-                    'min-w-0 self-center truncate text-xl font-extrabold',
+                    'whitespace-nowrap text-sm font-extrabold sm:text-base',
                     labelColor,
                   )}
                 >
-                  {kid.name}
+                  {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
                 </span>
-              </>
-            )}
-            {/* With several children: the others, to switch. */}
-            {kids
-              .filter((k) => k.id !== kid?.id)
-              .map((k) => (
-                <button
-                  key={k.id}
-                  type="button"
-                  aria-label={`${k.name} auswählen`}
-                  onClick={() => setActiveKid(k.id)}
-                  className="flex min-w-0 max-w-full cursor-pointer select-none items-center gap-2 rounded-full bg-cream/75 py-1 pl-1 pr-3 text-lg font-extrabold text-bark-800 shadow transition active:scale-95"
-                >
-                  <AnimalBadge animal={k.animal} className="h-10 w-10 bg-white" />
-                  <span className="truncate">{k.name}</span>
-                </button>
-              ))}
-          </div>
-          {/* on narrow screens the gear sits above the week switch */}
-          <div className="flex shrink-0 items-center gap-2 max-[399px]:flex-col-reverse max-[399px]:items-end">
-            <div className="flex items-center gap-1.5">
-              {/* Which days the forest shows: plain text, because only buttons sit on a pill. */}
-              <span
-                className={twMerge(
-                  'whitespace-nowrap text-sm font-extrabold sm:text-base',
-                  labelColor,
+                {/* the arrows are full 44 px touch targets */}
+                <div className="flex items-center rounded-full bg-cream/90 text-bark-800 shadow">
+                  <button
+                    type="button"
+                    aria-label="Woche davor"
+                    className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90"
+                    onClick={() =>
+                      void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
+                    }
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Woche danach"
+                    className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90 disabled:opacity-30"
+                    disabled={week === 0}
+                    onClick={() =>
+                      void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
+                    }
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* The hint opens with a plain tap: it only tells, the parents' area stays behind
+                  the question. */}
+                {parentHints.length > 0 && (
+                  <button
+                    type="button"
+                    aria-label="Hinweis für Eltern"
+                    onClick={() => setHintOpen(true)}
+                    className="flex h-11 w-11 cursor-pointer select-none items-center justify-center rounded-full bg-[#f4a62a] text-xl font-extrabold text-bark-900 shadow ring-2 ring-cream transition active:scale-90"
+                  >
+                    !
+                  </button>
                 )}
-              >
-                {week === 0 ? 'Diese Tage' : weekRangeLabel(days)}
-              </span>
-              {/* the arrows are full 44 px touch targets */}
-              <div className="flex items-center rounded-full bg-cream/90 text-bark-800 shadow">
-                <button
-                  type="button"
-                  aria-label="Woche davor"
-                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90"
-                  onClick={() =>
-                    void navigate({ to: '/', search: { week: Math.max(week - 1, -52) } })
-                  }
+                <HoldButton
+                  ms={500}
+                  onHold={() => {
+                    setGateTarget('putzen')
+                    setGateOpen(true)
+                  }}
+                  label="Für Eltern: gedrückt halten"
+                  className="rounded-full bg-cream/90 p-2.5 shadow"
                 >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Woche danach"
-                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center transition active:scale-90 disabled:opacity-30"
-                  disabled={week === 0}
-                  onClick={() =>
-                    void navigate({ to: '/', search: week + 1 >= 0 ? {} : { week: week + 1 } })
-                  }
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                  <GearIcon className="h-6 w-6 text-bark-700" />
+                </HoldButton>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* The hint opens with a plain tap: it only tells, the parents' area stays behind
-                  the question. */}
-              {parentHints.length > 0 && (
-                <button
-                  type="button"
-                  aria-label="Hinweis für Eltern"
-                  onClick={() => setHintOpen(true)}
-                  className="flex h-11 w-11 cursor-pointer select-none items-center justify-center rounded-full bg-[#f4a62a] text-xl font-extrabold text-bark-900 shadow ring-2 ring-cream transition active:scale-90"
-                >
-                  !
-                </button>
-              )}
-              <HoldButton
-                ms={500}
-                onHold={() => {
-                  setGateTarget('putzen')
-                  setGateOpen(true)
-                }}
-                label="Für Eltern: gedrückt halten"
-                className="rounded-full bg-cream/90 p-2.5 shadow"
-              >
-                <GearIcon className="h-6 w-6 text-bark-700" />
-              </HoldButton>
-            </div>
           </div>
+
+          {/* Start brushing, up in the sky, so the ground with the days reaches the bottom edge.
+            Only the button takes taps, the forest beside it stays tappable. In portrait it sits on
+            the right, where the path to the first day leaves room. */}
+          {kid && (
+            <Button
+              size="lg"
+              className="self-center text-2xl portrait:self-end"
+              onClick={() => void navigate({ to: '/putzen', search: { kid: kid.id, slot } })}
+            >
+              Zähne putzen
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* bottom: start brushing (below the forest, so it never hides a day) */}
-      {kid ? (
-        <div className="flex shrink-0 flex-col items-center justify-center gap-x-5 gap-y-2 bg-moss-800 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 landscape:flex-row landscape:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button
-            size="lg"
-            className="text-2xl"
-            onClick={() => void navigate({ to: '/putzen', search: { kid: kid.id, slot } })}
-          >
-            Zähne putzen
-          </Button>
-          {brushedNow && (
-            <p className="text-sm font-bold text-moss-100">
-              {slot === 'morning' ? 'Heute Morgen' : 'Heute Abend'} schon geputzt.
-            </p>
-          )}
-        </div>
-      ) : (
-        <FirstKid />
-      )}
+      {!kid && <FirstKid />}
 
       {kid && pickingAnimal && (
         <AnimalDialog
