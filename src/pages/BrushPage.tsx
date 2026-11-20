@@ -2,14 +2,7 @@ import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { useEffect, useRef, useState } from 'react'
 import { twMerge } from 'tailwind-merge'
-import {
-  CloseIcon,
-  MusicIcon,
-  MusicOffIcon,
-  PauseIcon,
-  PlayIcon,
-  RestartIcon,
-} from '@/components/icons'
+import { CloseIcon, MusicIcon, MusicOffIcon, PauseIcon, PlayIcon } from '@/components/icons'
 import { Button, Card } from '@/components/ui'
 import { familyStore, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { brushingsFor } from '@/features/family/queries'
@@ -249,14 +242,11 @@ export function BrushPage() {
         {/* text + buttons: all phases share one grid cell, so the column is as big as the biggest */}
         <div className="grid w-full max-w-md landscape:w-[min(28rem,40vw)]">
           <div className={layer(timer.phase === 'ready')}>
+            {/* Only when this morning or evening is already done. */}
+            <p className={TOP_LINE}>{earlier ? alreadyBrushed(evening, earlier) : ''}</p>
             <h1 className="text-3xl font-extrabold sm:text-4xl">
               {totalSeconds === 180 ? 'Drei' : 'Zwei'} Minuten, vier Ecken.
             </h1>
-            <p className="max-w-sm text-lg font-semibold opacity-80">
-              {earlier
-                ? alreadyBrushed(evening, earlier)
-                : `${subject} putzt oben rechts, oben links, unten links, unten rechts. Putz einfach mit! Bei jedem Gong geht es weiter.`}
-            </p>
             <Button size="xl" onClick={start}>
               <PlayIcon className="h-8 w-8" />
               Los geht’s
@@ -264,57 +254,37 @@ export function BrushPage() {
           </div>
 
           <div className={layer(timer.phase === 'running' || timer.phase === 'paused')}>
-            <p className="text-base font-bold opacity-75">
-              {/* "Gleich:" sits up here, so the big name keeps to one line and one height. */}
-              {/* The side is the animal's own side, so the line names the animal. */}
-              {position.switching ? 'Wechseln! Gleich:' : `${subject} putzt`}
+            {/* The side is the animal's own side, so the line names the animal. The time is for
+                adults; the child follows the ring. */}
+            <p className={twMerge(TOP_LINE, 'tabular-nums')}>
+              {timer.phase === 'paused'
+                ? 'Pause'
+                : position.switching
+                  ? 'Wechseln!'
+                  : `${subject} putzt · noch ${clockLabel(position.totalRemaining)}`}
             </p>
             <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
-            <p className="text-2xl font-bold tabular-nums opacity-80">
-              noch {clockLabel(position.totalRemaining)}
-            </p>
-            <div className="flex items-center gap-3">
-              {/* "Pause" and "Weiter" share one cell and one size. */}
-              <div className="grid">
-                <Button
-                  size="xl"
-                  variant="secondary"
-                  onClick={pause}
-                  aria-label="Pause"
-                  className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'running'))}
-                >
-                  <PauseIcon className="h-8 w-8" />
-                  Pause
-                </Button>
-                <Button
-                  size="xl"
-                  onClick={resume}
-                  className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'paused'))}
-                >
-                  <PlayIcon className="h-8 w-8" />
-                  Weiter
-                </Button>
-              </div>
-              {/* Only while paused, so a finger next to "Pause" cannot reset the timer. */}
+            {/* "Pause" and "Weiter" share one cell and one size. */}
+            <div className="grid">
               <Button
-                size="lg"
-                variant="ghost"
-                onClick={restart}
-                aria-label="Neu starten"
-                className={twMerge(
-                  evening ? '' : 'bg-white/60 text-bark-800',
-                  fade(timer.phase === 'paused'),
-                )}
+                size="xl"
+                variant="secondary"
+                onClick={pause}
+                aria-label="Pause"
+                className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'running'))}
               >
-                <RestartIcon className="h-6 w-6" />
-                Neu
+                <PauseIcon className="h-8 w-8" />
+                Pause
+              </Button>
+              <Button
+                size="xl"
+                onClick={resume}
+                className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'paused'))}
+              >
+                <PlayIcon className="h-8 w-8" />
+                Weiter
               </Button>
             </div>
-            <p
-              className={twMerge('text-lg font-bold', fade(timer.phase === 'paused', 'opacity-80'))}
-            >
-              Pause. Weiter, wenn du bereit bist.
-            </p>
           </div>
 
           <DoneText
@@ -340,12 +310,22 @@ export function BrushPage() {
             record(timer.brushedSeconds())
             void navigate({ to: '/' })
           }}
+          onRestart={() => {
+            setAskStop(false)
+            restart()
+          }}
           onDiscard={() => void navigate({ to: '/' })}
         />
       )}
     </main>
   )
 }
+
+/**
+ * The small line above the headline, two lines high and filled from the bottom, so a longer
+ * text grows upward and the headline stays in place in every phase.
+ */
+const TOP_LINE = 'flex min-h-12 flex-col justify-end text-base font-bold opacity-75'
 
 /**
  * Shown or hidden without unmounting, at the same place. Hidden content is `invisible`: it keeps
@@ -361,7 +341,7 @@ function fade(shown: boolean, opacity = 'opacity-100') {
 /** One phase of the text column; all phases lie on top of each other in the same grid cell. */
 function layer(shown: boolean) {
   return twMerge(
-    'col-start-1 row-start-1 flex flex-col items-center gap-4 self-start text-center landscape:items-start landscape:self-center landscape:text-left',
+    'col-start-1 row-start-1 flex flex-col items-center gap-4 self-start text-center landscape:items-start landscape:text-left',
     fade(shown),
   )
 }
@@ -442,12 +422,14 @@ function StopDialog({
   total,
   onContinue,
   onCount,
+  onRestart,
   onDiscard,
 }: {
   elapsed: number
   total: number
   onContinue: () => void
   onCount: () => void
+  onRestart: () => void
   onDiscard: () => void
 }) {
   return (
@@ -465,10 +447,19 @@ function StopDialog({
             Als geputzt eintragen
           </Button>
         )}
+        {/* Starting over sits here, two steps away from the main button, so a finger cannot
+            reset the timer by mistake. */}
+        <button
+          type="button"
+          onClick={onRestart}
+          className="mt-2 min-h-11 cursor-pointer select-none self-center px-3 font-bold text-bark-600 underline"
+        >
+          Von vorn anfangen
+        </button>
         <button
           type="button"
           onClick={onDiscard}
-          className="mt-2 min-h-11 self-center px-3 font-bold text-bark-600 underline"
+          className="min-h-11 cursor-pointer select-none self-center px-3 font-bold text-bark-600 underline"
         >
           Nicht eintragen
         </button>
