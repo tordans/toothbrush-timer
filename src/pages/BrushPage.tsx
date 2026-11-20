@@ -13,7 +13,7 @@ import {
 import { Button, Card } from '@/components/ui'
 import { familyStore, useFamily, useFamilyActions } from '@/features/family/family-store'
 import { brushingsFor } from '@/features/family/queries'
-import type { Animal as AnimalId, Brushing } from '@/features/family/schema'
+import type { Brushing } from '@/features/family/schema'
 import { Animal } from '@/features/forest/Animal'
 import { DoneMoment } from '@/features/forest/DoneMoment'
 import { usePhotoReward } from '@/features/photos/use-photo-reward'
@@ -82,6 +82,9 @@ export function BrushPage() {
     },
     onAutoPause: () => brushingAudio.stopMusic(),
   })
+
+  // Only while the child has fields left to uncover; never a "done" state.
+  const photo = usePhotoReward(kidId, useNow())
 
   // Every animal has its own song and corner jingle.
   const animal = kid?.animal
@@ -157,6 +160,7 @@ export function BrushPage() {
   const section = SECTIONS[position.sectionIndex]
   const corner = section ?? SECTIONS[0]
   const evening = slot === 'evening'
+  const done = timer.phase === 'done'
   // The top colours of the two backgrounds below (night and #bfe3f2).
   useThemeColor(evening ? '#1f2347' : '#bfe3f2')
 
@@ -192,19 +196,15 @@ export function BrushPage() {
         </button>
       </div>
 
-      {timer.phase === 'done' ? (
-        <Done
-          kidId={kid.id}
-          animal={kid.animal}
-          evening={evening}
-          earlier={earlier}
-          onHome={() => void navigate({ to: '/' })}
-          onPhoto={(week) => void navigate({ to: '/foto', search: { week, kid: kid.id } })}
-        />
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] landscape:flex-row landscape:gap-10">
-          {/* dial with the animal */}
-          <div className="relative h-[min(78vw,46vh)] w-[min(78vw,46vh)] shrink-0 landscape:h-[min(42vw,62vh)] landscape:w-[min(42vw,62vh)]">
+      {/* One stage for every phase: the picture box and the text column keep their size and place,
+          the phases only fade their content in and out, so nothing jumps. */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] landscape:flex-row landscape:gap-10">
+        {/* dial with the animal, and in its place the "Fertig!" scene */}
+        <div
+          data-testid="brush-picture"
+          className="relative h-[min(78vw,46vh)] w-[min(78vw,46vh)] shrink-0 landscape:h-[min(42vw,62vh)] landscape:w-[min(42vw,62vh)]"
+        >
+          <div className={twMerge('absolute inset-0', fade(!done))}>
             <MouthDial
               sectionIndex={position.sectionIndex}
               sectionProgress={position.sectionProgress}
@@ -234,69 +234,97 @@ export function BrushPage() {
               </div>
             </div>
           </div>
-
-          {/* text + buttons */}
-          <div className="flex flex-col items-center gap-4 text-center landscape:items-start landscape:text-left">
-            {timer.phase === 'ready' ? (
-              <>
-                <h1 className="text-3xl font-extrabold sm:text-4xl">
-                  {totalSeconds === 180 ? 'Drei' : 'Zwei'} Minuten, vier Ecken.
-                </h1>
-                <p className="max-w-sm text-lg font-semibold opacity-80">
-                  Oben links, oben rechts, unten rechts, unten links. Bei jedem Gong geht es weiter.
-                </p>
-                <Button size="xl" onClick={start}>
-                  <PlayIcon className="h-8 w-8" />
-                  Los geht’s
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-base font-bold opacity-75">
-                  {position.switching ? 'Wechseln!' : `Ecke ${position.sectionIndex + 1} von 4`}
-                </p>
-                <h1 className="text-4xl font-extrabold sm:text-5xl">
-                  {position.switching ? `Gleich: ${section?.label}` : section?.label}
-                </h1>
-                <p className="text-2xl font-bold tabular-nums opacity-80">
-                  noch {clockLabel(position.totalRemaining)}
-                </p>
-                <div className="flex items-center gap-3">
-                  {timer.phase === 'running' ? (
-                    <Button size="xl" variant="secondary" onClick={pause} aria-label="Pause">
-                      <PauseIcon className="h-8 w-8" />
-                      Pause
-                    </Button>
-                  ) : (
-                    <Button size="xl" onClick={resume}>
-                      <PlayIcon className="h-8 w-8" />
-                      Weiter
-                    </Button>
-                  )}
-                  {/* Only while paused, so a finger next to "Pause" cannot reset the timer. */}
-                  {timer.phase === 'paused' && (
-                    <Button
-                      size="lg"
-                      variant="ghost"
-                      onClick={restart}
-                      aria-label="Neu starten"
-                      className={evening ? '' : 'bg-white/60 text-bark-800'}
-                    >
-                      <RestartIcon className="h-6 w-6" />
-                      Neu
-                    </Button>
-                  )}
-                </div>
-                {timer.phase === 'paused' && (
-                  <p className="text-lg font-bold opacity-80">
-                    Pause. Weiter, wenn du bereit bist.
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+          {/* As wide as the dial with the animal around it (-14% to 114%). */}
+          {done && (
+            <DoneMoment
+              animal={kid.animal}
+              evening={evening}
+              thought={photo.hasFieldsLeft}
+              className="absolute left-[-14%] top-1/2 w-[128%] -translate-y-1/2"
+            />
+          )}
         </div>
-      )}
+
+        {/* text + buttons: all phases share one grid cell, so the column is as big as the biggest */}
+        <div className="grid w-full max-w-md landscape:w-[min(28rem,40vw)]">
+          <div className={layer(timer.phase === 'ready')}>
+            <h1 className="text-3xl font-extrabold sm:text-4xl">
+              {totalSeconds === 180 ? 'Drei' : 'Zwei'} Minuten, vier Ecken.
+            </h1>
+            <p className="max-w-sm text-lg font-semibold opacity-80">
+              {earlier
+                ? alreadyBrushed(evening, earlier)
+                : 'Oben links, oben rechts, unten rechts, unten links. Bei jedem Gong geht es weiter.'}
+            </p>
+            <Button size="xl" onClick={start}>
+              <PlayIcon className="h-8 w-8" />
+              Los geht’s
+            </Button>
+          </div>
+
+          <div className={layer(timer.phase === 'running' || timer.phase === 'paused')}>
+            <p className="text-base font-bold opacity-75">
+              {/* "Gleich:" sits up here, so the big name keeps to one line and one height. */}
+              {position.switching ? 'Wechseln! Gleich:' : `Ecke ${position.sectionIndex + 1} von 4`}
+            </p>
+            <h1 className="text-4xl font-extrabold sm:text-5xl">{section?.label}</h1>
+            <p className="text-2xl font-bold tabular-nums opacity-80">
+              noch {clockLabel(position.totalRemaining)}
+            </p>
+            <div className="flex items-center gap-3">
+              {/* "Pause" and "Weiter" share one cell and one size. */}
+              <div className="grid">
+                <Button
+                  size="xl"
+                  variant="secondary"
+                  onClick={pause}
+                  aria-label="Pause"
+                  className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'running'))}
+                >
+                  <PauseIcon className="h-8 w-8" />
+                  Pause
+                </Button>
+                <Button
+                  size="xl"
+                  onClick={resume}
+                  className={twMerge('col-start-1 row-start-1', fade(timer.phase === 'paused'))}
+                >
+                  <PlayIcon className="h-8 w-8" />
+                  Weiter
+                </Button>
+              </div>
+              {/* Only while paused, so a finger next to "Pause" cannot reset the timer. */}
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={restart}
+                aria-label="Neu starten"
+                className={twMerge(
+                  evening ? '' : 'bg-white/60 text-bark-800',
+                  fade(timer.phase === 'paused'),
+                )}
+              >
+                <RestartIcon className="h-6 w-6" />
+                Neu
+              </Button>
+            </div>
+            <p
+              className={twMerge('text-lg font-bold', fade(timer.phase === 'paused', 'opacity-80'))}
+            >
+              Pause. Weiter, wenn du bereit bist.
+            </p>
+          </div>
+
+          <DoneText
+            active={done}
+            evening={evening}
+            earlier={earlier}
+            photo={photo}
+            onHome={() => void navigate({ to: '/' })}
+            onPhoto={(week) => void navigate({ to: '/foto', search: { week, kid: kid.id } })}
+          />
+        </div>
+      </div>
 
       {askStop && (
         <StopDialog
@@ -317,69 +345,91 @@ export function BrushPage() {
   )
 }
 
-function Done({
-  kidId,
-  animal,
+/**
+ * Shown or hidden without unmounting, at the same place. Hidden content is `invisible`: it keeps
+ * its space but cannot be tapped or focused. Reduced motion shortens the fade (index.css).
+ */
+function fade(shown: boolean, opacity = 'opacity-100') {
+  return twMerge(
+    'transition-[opacity,visibility,transform] duration-300',
+    shown ? `visible ${opacity}` : 'invisible opacity-0',
+  )
+}
+
+/** One phase of the text column; all phases lie on top of each other in the same grid cell. */
+function layer(shown: boolean) {
+  return twMerge(
+    'col-start-1 row-start-1 flex flex-col items-center gap-4 self-start text-center landscape:items-start landscape:self-center landscape:text-left',
+    fade(shown),
+  )
+}
+
+function DoneText({
+  active,
   evening,
   earlier,
+  photo,
   onHome,
   onPhoto,
 }: {
-  kidId: string
-  animal: AnimalId
+  active: boolean
   evening: boolean
   earlier: Brushing | undefined
+  photo: ReturnType<typeof usePhotoReward>
   onHome: () => void
   onPhoto: (week: string) => void
 }) {
-  // Only while the child has fields left to uncover; never a "done" state.
-  const photo = usePhotoReward(kidId, useNow())
+  // The staggered fade-in starts when the phase is shown, not when the page opens.
+  const appear = (delay: number) =>
+    active ? { className: 'animate-fadein', style: { animationDelay: `${delay}s` } } : {}
+  const repeat = photo.hasWeekPhoto && !photo.hasFieldsLeft
+  const title = appear(0.3)
+  const text = appear(0.6)
+  const actions = appear(0.9)
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] text-center sm:gap-5 landscape:flex-row landscape:gap-8 landscape:text-left">
-      <DoneMoment
-        animal={animal}
-        evening={evening}
-        thought={photo.hasFieldsLeft}
-        className="w-[min(94vw,calc((100vh_-_19rem)*1.36))] shrink-0 landscape:w-[min(56vw,calc((100vh_-_7rem)*1.36))]"
-      />
-      <div className="flex flex-col items-center gap-3 landscape:items-start">
-        <h1
-          className="animate-fadein text-5xl font-extrabold sm:text-6xl md:text-7xl"
-          style={{ animationDelay: '0.3s' }}
-        >
-          Fertig!
-        </h1>
-        <p
-          className="max-w-md animate-fadein text-xl font-semibold opacity-85 md:text-2xl"
-          style={{ animationDelay: '0.6s' }}
-        >
-          Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
-        </p>
-        {/* Brushing the same morning or evening again brings no new fields: say so, or the
-            missing photo button looks like a fault. */}
-        {photo.hasWeekPhoto && !photo.hasFieldsLeft && (
-          <p className="max-w-md text-base font-semibold opacity-75">
-            {repeatHint(evening, earlier)}
-          </p>
-        )}
-        <div
-          className="flex animate-fadein flex-wrap items-center justify-center gap-3 landscape:justify-start"
-          style={{ animationDelay: '0.9s' }}
-        >
-          <Button size="lg" className="text-2xl" onClick={onHome}>
-            Zurück in den Wald
-          </Button>
-          {photo.hasFieldsLeft && (
-            <Button
-              size="lg"
-              variant="secondary"
-              className="min-h-11 cursor-pointer select-none text-2xl"
-              onClick={() => onPhoto(photo.week)}
-            >
-              Zum Foto
-            </Button>
+    <div className={twMerge(layer(active), 'gap-3')}>
+      <h1
+        className={twMerge('text-5xl font-extrabold sm:text-6xl md:text-7xl', title.className)}
+        style={title.style}
+      >
+        Fertig!
+      </h1>
+      <p
+        className={twMerge('max-w-md text-xl font-semibold opacity-85 md:text-2xl', text.className)}
+        style={text.style}
+      >
+        Alle vier Ecken sind sauber. {evening ? 'Die Laterne leuchtet.' : 'Die Blume ist offen.'}
+      </p>
+      <Button
+        size="lg"
+        className={twMerge('text-2xl', actions.className)}
+        style={actions.style}
+        onClick={onHome}
+      >
+        Zurück in den Wald
+      </Button>
+      {/* "Zum Foto" or, when brushing the same morning or evening again brings no new fields,
+          why not (or the missing button looks like a fault). Both share one slot. */}
+      <div className={twMerge('grid', actions.className)} style={actions.style}>
+        <Button
+          size="lg"
+          variant="secondary"
+          className={twMerge(
+            'col-start-1 row-start-1 min-h-11 cursor-pointer select-none self-start justify-self-center text-2xl landscape:justify-self-start',
+            fade(photo.hasFieldsLeft),
           )}
-        </div>
+          onClick={() => onPhoto(photo.week)}
+        >
+          Zum Foto
+        </Button>
+        <p
+          className={twMerge(
+            'col-start-1 row-start-1 max-w-md text-base font-semibold',
+            fade(repeat, 'opacity-75'),
+          )}
+        >
+          {repeatHint(evening, earlier)}
+        </p>
       </div>
     </div>
   )
@@ -425,14 +475,16 @@ function StopDialog({
   )
 }
 
+/** That this morning or evening was already brushed, and when, if known. */
+function alreadyBrushed(evening: boolean, earlier: Brushing): string {
+  const when = evening ? 'Heute Abend' : 'Heute Morgen'
+  if (earlier.source === 'manual') return `${when} ist schon als geputzt eingetragen.`
+  return `${when} hast du schon um ${format(new Date(earlier.at), 'H:mm')} Uhr geputzt.`
+}
+
 /** Why a repeated brushing brings no new fields: says when this morning or evening was brushed. */
 function repeatHint(evening: boolean, earlier: Brushing | undefined): string {
-  const when = evening ? 'Heute Abend' : 'Heute Morgen'
   if (!earlier)
     return `Die Foto-Felder für ${evening ? 'heute Abend' : 'heute Morgen'} sind schon freigemacht.`
-  if (earlier.source === 'manual') {
-    return `${when} ist schon als geputzt eingetragen. Die Foto-Felder dafür sind schon frei.`
-  }
-  const time = format(new Date(earlier.at), 'H:mm')
-  return `${when} hast du schon um ${time} Uhr geputzt. Die Foto-Felder dafür sind schon frei.`
+  return `${alreadyBrushed(evening, earlier)} Die Foto-Felder dafür sind schon frei.`
 }
