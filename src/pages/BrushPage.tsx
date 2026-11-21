@@ -1,6 +1,6 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { format } from 'date-fns'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { twMerge } from 'tailwind-merge'
 import { CloseIcon, MusicIcon, MusicOffIcon, PauseIcon, PlayIcon } from '@/components/icons'
 import { Button, Card } from '@/components/ui'
@@ -68,12 +68,12 @@ export function BrushPage() {
       if (gong) brushingAudio.switchJingle()
     },
     onDone: () => {
-      brushingAudio.stopMusic()
+      brushingAudio.stopBrushing()
       if (gong) brushingAudio.finishMelody()
       allowScreenOff()
       record(totalSeconds)
     },
-    onAutoPause: () => brushingAudio.stopMusic(),
+    onAutoPause: () => brushingAudio.stopBrushing(),
   })
 
   // Only while the child has fields left to uncover; never a "done" state.
@@ -88,11 +88,34 @@ export function BrushPage() {
   // Leaving the page (back button, navigation) always stops sound and the wake lock.
   useEffect(
     () => () => {
-      brushingAudio.stopMusic()
+      brushingAudio.stopBrushing()
       allowScreenOff()
     },
     [],
   )
+
+  const start = () => {
+    brushingAudio.startBrushing(music)
+    void keepScreenOn()
+    timer.start()
+  }
+  const resume = start
+  const pause = () => {
+    brushingAudio.stopBrushing()
+    timer.pause()
+  }
+
+  // The Now Playing buttons of iOS (and the lock screen) pause and go on like the buttons here.
+  const mediaPlay = useEffectEvent(() => {
+    if (timer.phase === 'paused') resume()
+  })
+  const mediaPause = useEffectEvent(() => {
+    if (timer.phase === 'running') pause()
+  })
+  useEffect(() => {
+    brushingAudio.setMediaControls({ play: () => mediaPlay(), pause: () => mediaPause() })
+    return () => brushingAudio.setMediaControls(null)
+  }, [])
 
   // Return to the forest a while after finishing.
   useEffect(() => {
@@ -109,25 +132,8 @@ export function BrushPage() {
     )
   }
 
-  const start = () => {
-    brushingAudio.unlock()
-    if (music) brushingAudio.startMusic()
-    void keepScreenOn()
-    timer.start()
-  }
-  const resume = () => {
-    brushingAudio.unlock()
-    if (music) brushingAudio.startMusic()
-    void keepScreenOn()
-    timer.start()
-  }
-  const pause = () => {
-    brushingAudio.stopMusic()
-    timer.pause()
-  }
   const restart = () => {
-    brushingAudio.unlock()
-    if (music) brushingAudio.startMusic()
+    brushingAudio.startBrushing(music)
     void keepScreenOn()
     timer.restart()
   }

@@ -2,24 +2,45 @@
  * Sound for the brushing timer, generated with the Web Audio API (no audio files):
  * - optional background music, the song of the child's animal (see music.ts),
  * - a short phrase at each section change, in the instrument of the chosen song,
- * - a little bell melody at the end.
+ * - a little bell melody at the end,
+ * - and on the home page the quiet forest sound (see forest/ambience.ts).
  *
  * Music and sounds have their own volume (bus): the jingles and bells still play when the music is
  * off, and the music steps back while a jingle plays. A soft limiter on the output catches peaks.
  *
  * The AudioContext must be created from a tap (browser autoplay rules). When another app takes the
  * sound, coming back to the page or the next tap brings it back, with a new context if needed.
+ *
+ * When nothing should sound any more, the context is suspended after the fade ("held"), so iOS
+ * drops its Now Playing entry; it only wakes again when something plays. While brushing (and its
+ * jingles and bells) the iOS audio session is "playback", so the silent switch does not mute it;
+ * otherwise it is "ambient": the forest mixes with other apps and does not take over Now Playing.
  */
 
 import type { Animal } from '@/features/family/schema'
+import { playForest, type Forest, type ForestMood } from '@/features/forest/ambience'
 import { SONGS, type Voices } from './music'
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext }
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
 
+/** The parts of the Media Session API used here; not every browser has it. */
+type Media = {
+  playbackState: 'none' | 'paused' | 'playing'
+  setActionHandler: (action: 'play' | 'pause', handler: (() => void) | null) => void
+}
+const media = () => (navigator as Navigator & { mediaSession?: Media }).mediaSession
+
+/** What the lock screen and Now Playing buttons do while brushing. */
+export type MediaControls = { play: () => void; pause: () => void }
+
 const MUSIC_LEVEL = 0.7
 /** While a jingle plays, the music steps back to 40 % (about 8 dB quieter). */
 const DUCKED_LEVEL = MUSIC_LEVEL * 0.4
+/** The forest stays well in the background. */
+const FOREST_LEVEL = 0.5
+/** After the last sound, the context is suspended once the longest fade (the forest's) is over. */
+const QUIET_AFTER = 2.5
 
 export class BrushingAudio {
   private ctx: AudioContext | null = null
@@ -28,6 +49,10 @@ export class BrushingAudio {
   private echo: DelayNode | null = null
   private sfxBus: GainNode | null = null
   private sfxEcho: DelayNode | null = null
+  private forestBus: GainNode | null = null
+  /** Which forest should sound (null: none); it comes back with a fresh context. */
+  private forestMood: ForestMood | null = null
+  private forest: Forest | null = null
   private musicOn = false
   private animal: Animal = 'owl'
   private step = 0
@@ -35,6 +60,13 @@ export class BrushingAudio {
   private scheduleTimer: ReturnType<typeof setTimeout> | undefined
   private reviving = false
   private listening = false
+  /** The child is brushing: the session stays "playback", Now Playing says "playing". */
+  private brushing = false
+  /** Audio clock time when the last jingle or bell has faded. */
+  private sfxUntil = 0
+  /** We suspended the context on purpose: nothing may wake it until something plays. */
+  private held = false
+  private quietTimer: ReturnType<typeof setTimeout> | undefined
 
   /**
    * Call from a tap handler: makes the sound on the first tap, and brings it back after another app
@@ -46,6 +78,10 @@ export class BrushingAudio {
     if (!ctx || ctx.state === 'closed') {
       this.build()
       return
+    }
+    if (this.held) {
+      if (!this.wanted()) return
+      this.held = false
     }
     if (ctx.state === 'running' || this.reviving) return
     this.reviving = true
@@ -61,7 +97,7 @@ export class BrushingAudio {
   /** Tries to resume without a tap; if the browser refuses, the next tap does it (see listen). */
   private wake() {
     const ctx = this.ctx
-    if (ctx && ctx.state !== 'running' && ctx.state !== 'closed') {
+    if (ctx && !this.held && ctx.state !== 'running' && ctx.state !== 'closed') {
       void ctx.resume().catch(() => undefined)
     }
   }
@@ -77,7 +113,7 @@ export class BrushingAudio {
     window.addEventListener('pageshow', wake)
     window.addEventListener('focus', wake)
     const tap = () => {
-      if (this.ctx && this.ctx.state !== 'running') this.unlock()
+      if (this.ctx && !this.held && this.ctx.state !== 'running') this.unlock()
     }
     for (const type of ['pointerdown', 'touchend']) {
       document.addEventListener(type, tap, { capture: true, passive: true })
@@ -88,9 +124,8 @@ export class BrushingAudio {
   private build() {
     const Ctor = window.AudioContext ?? (window as WebkitWindow).webkitAudioContext
     if (!Ctor) return
-    // iOS mutes Web Audio with the silent switch unless the session is "playback".
-    const nav = navigator as AudioSessionNavigator
-    if (nav.audioSession) nav.audioSession.type = 'playback'
+    this.held = false
+    this.applySession()
     const ctx = new Ctor()
     this.ctx = ctx
     this.master = ctx.createGain()
@@ -115,6 +150,10 @@ export class BrushingAudio {
     this.sfxBus.connect(this.master)
     this.sfxEcho = this.softEcho(ctx, this.sfxBus)
 
+    this.forestBus = ctx.createGain()
+    this.forestBus.gain.value = FOREST_LEVEL
+    this.forestBus.connect(this.master)
+
     ctx.addEventListener('statechange', () => this.wake())
     this.listen()
     if (ctx.state !== 'running') void ctx.resume().catch(() => undefined)
@@ -122,6 +161,125 @@ export class BrushingAudio {
       clearTimeout(this.scheduleTimer)
       this.playFrom(ctx.currentTime + 0.1)
     }
+    if (this.forestMood) {
+      this.forest?.stop(0)
+      this.forest = playForest({ ctx, out: this.forestBus }, this.forestMood)
+    }
+    this.refresh()
+  }
+
+  /** Something should sound now or soon. */
+  private wanted() {
+    return this.brushing || this.musicOn || this.forestMood !== null || this.sfxPlaying()
+  }
+
+  private sfxPlaying() {
+    return !!this.ctx && this.ctx.currentTime < this.sfxUntil
+  }
+
+  /**
+   * iOS mutes Web Audio with the silent switch unless the session is "playback": brushing needs
+   * it. The forest alone is "ambient", so it never takes over from the family's own music.
+   */
+  private applySession() {
+    const nav = navigator as AudioSessionNavigator
+    if (!nav.audioSession) return
+    const brushingSound = this.brushing || this.musicOn || this.sfxPlaying()
+    nav.audioSession.type = brushingSound ? 'playback' : 'ambient'
+  }
+
+  /** Session, Now Playing state and the quiet timer, after anything started or stopped. */
+  private refresh() {
+    this.applySession()
+    const m = media()
+    if (m) m.playbackState = this.brushing ? 'playing' : 'none'
+    clearTimeout(this.quietTimer)
+    const ctx = this.ctx
+    if (!ctx || this.held || this.brushing || this.musicOn || this.forestMood !== null) return
+    // Only jingles or bells left (or nothing): wait until they and the fades are over.
+    const left = Math.max(0, this.sfxUntil - ctx.currentTime)
+    this.quietTimer = setTimeout(() => this.settle(), (left + QUIET_AFTER) * 1000)
+  }
+
+  /** Nothing sounds any more: suspend the context, so iOS drops the Now Playing entry. */
+  private settle() {
+    const ctx = this.ctx
+    if (!ctx) return
+    if (this.wanted()) {
+      this.refresh()
+      return
+    }
+    this.held = true
+    if (ctx.state === 'running') void ctx.suspend().catch(() => undefined)
+    this.refresh()
+  }
+
+  /** Something is about to play: wake a context we held (a refused resume waits for a tap). */
+  private rouse() {
+    clearTimeout(this.quietTimer)
+    const ctx = this.ctx
+    if (!ctx || !this.held) return
+    this.held = false
+    if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume().catch(() => undefined)
+  }
+
+  /** A jingle or bell plays until `until` (audio clock). */
+  private sfxPlays(until: number) {
+    this.rouse()
+    this.sfxUntil = Math.max(this.sfxUntil, until)
+    this.refresh()
+  }
+
+  /** The timer runs: session "playback" from the tap on, and the music if it is on. */
+  startBrushing(music: boolean) {
+    this.brushing = true
+    this.refresh()
+    this.unlock()
+    if (music) this.startMusic()
+  }
+
+  /** Paused, done or left: the music fades; a last bell still plays to its end. */
+  stopBrushing() {
+    this.brushing = false
+    this.stopMusic()
+    this.refresh()
+  }
+
+  /** The Now Playing buttons do what the brushing page's own buttons do; null clears them. */
+  setMediaControls(controls: MediaControls | null) {
+    const m = media()
+    if (!m) return
+    for (const action of ['play', 'pause'] as const) {
+      try {
+        m.setActionHandler(action, controls ? controls[action] : null)
+      } catch {
+        // This browser does not know the action.
+      }
+    }
+  }
+
+  /**
+   * The forest sound fades in. Before the first tap there is no context yet: it then starts with
+   * the context, on that tap.
+   */
+  startForest(mood: ForestMood) {
+    if (this.forestMood === mood && this.forest) return
+    this.forest?.stop()
+    this.forest = null
+    this.forestMood = mood
+    this.rouse()
+    if (this.ctx && this.forestBus && this.ctx.state !== 'closed') {
+      this.forest = playForest({ ctx: this.ctx, out: this.forestBus }, mood)
+    }
+    this.refresh()
+  }
+
+  /** The forest sound fades out and stops. */
+  stopForest() {
+    this.forestMood = null
+    this.forest?.stop()
+    this.forest = null
+    this.refresh()
   }
 
   /** Throws the dead context away and builds a new one. */
@@ -186,6 +344,7 @@ export class BrushingAudio {
       [1046.5, 1.0],
     ]
     for (const [freq, at] of notes) this.bell(freq, t + at, 0.3, at === 1.0 ? 3.6 : 1.8)
+    this.sfxPlays(t + 1.0 + 3.6)
   }
 
   /** A soft little bell for an uncovered photo field; `step` climbs a pentatonic scale. */
@@ -193,6 +352,7 @@ export class BrushingAudio {
     if (!this.ctx) return
     const notes = [783.99, 880, 1046.5, 1174.66, 1318.51]
     this.bell(notes[Math.abs(step) % notes.length]!, this.ctx.currentTime + 0.02, 0.12, 1.6)
+    this.sfxPlays(this.ctx.currentTime + 1.7)
   }
 
   /** Whose song plays; the corner jingle follows it even when the music is off. */
@@ -217,6 +377,8 @@ export class BrushingAudio {
     const bus = this.musicBus
     if (!ctx || !bus || this.musicOn) return
     this.musicOn = true
+    this.rouse()
+    this.refresh()
     bus.gain.cancelScheduledValues(ctx.currentTime)
     bus.gain.setValueAtTime(bus.gain.value, ctx.currentTime)
     bus.gain.linearRampToValueAtTime(MUSIC_LEVEL, ctx.currentTime + 1.5)
@@ -272,6 +434,8 @@ export class BrushingAudio {
     }
     const eighths = song.jingle(v, t, eighth)
     if (this.musicOn) this.duck(t, t + (eighths + 1) * eighth)
+    // The echo rings on for a while after the last note.
+    this.sfxPlays(t + (eighths + 1) * eighth + 2)
   }
 
   /** The music steps back under a jingle and comes back over half a second. */
@@ -294,6 +458,7 @@ export class BrushingAudio {
     clearTimeout(this.scheduleTimer)
     if (!ctx || !bus || !this.musicOn) return
     this.musicOn = false
+    this.refresh()
     const t = ctx.currentTime
     bus.gain.cancelScheduledValues(t)
     bus.gain.setValueAtTime(bus.gain.value, t)

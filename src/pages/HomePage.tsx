@@ -8,6 +8,8 @@ import {
   ChevronRight,
   FrameIcon,
   GearIcon,
+  SoundIcon,
+  SoundOffIcon,
 } from '@/components/icons'
 import {
   AnimalBadge,
@@ -22,6 +24,7 @@ import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
 import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
+import { useForestSound } from '@/features/forest/use-forest-sound'
 import { ParentGateDialog } from '@/features/parent-gate/ParentGateDialog'
 import { ParentHintDialog } from '@/features/parent-gate/ParentHintDialog'
 import { occasionName } from '@/features/photos/occasions'
@@ -56,11 +59,12 @@ export function HomePage() {
   const light = dayLightForSlot(slot, now)
   // Name and week are plain text right on the sky (only buttons get a pill): dark text with a soft
   // light halo by day, light text with a dark halo in the evening and at night, readable over trees.
-  const labelColor =
-    light === 'evening' || light === 'night'
-      ? 'text-cream [text-shadow:0_0_6px_rgb(0_0_0/0.5),0_1px_3px_rgb(0_0_0/0.45)]'
-      : 'text-bark-900 [text-shadow:0_0_6px_rgb(255_255_255/0.9),0_1px_2px_rgb(255_255_255/0.8)]'
+  const dark = light === 'evening' || light === 'night'
+  const labelColor = dark
+    ? 'text-cream [text-shadow:0_0_6px_rgb(0_0_0/0.5),0_1px_3px_rgb(0_0_0/0.45)]'
+    : 'text-bark-900 [text-shadow:0_0_6px_rgb(255_255_255/0.9),0_1px_2px_rgb(255_255_255/0.8)]'
   useThemeColor(SKY[light][0])
+  const sound = useForestSound(dark ? 'evening' : 'day')
 
   const today = isoDay(now)
   const photo = usePhotoReward(kid?.id, now)
@@ -93,7 +97,10 @@ export function HomePage() {
     navigate({ to: '/foto', search: { week: photoWeek, kid: kidId } })
 
   return (
-    <main className="relative flex h-full w-full touch-manipulation flex-col overflow-hidden">
+    <main
+      className="relative flex h-full w-full touch-manipulation flex-col overflow-hidden"
+      onPointerDown={sound.tap}
+    >
       <div ref={forestRef} className="relative min-h-0 flex-1">
         <ForestWeek
           days={dayStatus}
@@ -209,6 +216,22 @@ export function HomePage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={sound.on ? 'Waldgeräusche aus' : 'Waldgeräusche an'}
+                  aria-pressed={sound.on}
+                  onClick={sound.toggle}
+                  className={twMerge(
+                    'flex h-11 w-11 cursor-pointer select-none items-center justify-center rounded-full bg-white/25 backdrop-blur-sm transition active:scale-90',
+                    dark ? 'text-cream' : 'text-bark-800',
+                  )}
+                >
+                  {sound.on ? (
+                    <SoundIcon className="h-6 w-6" />
+                  ) : (
+                    <SoundOffIcon className="h-6 w-6" />
+                  )}
+                </button>
                 {/* The hint opens with a plain tap: it only tells, the parents' area stays behind
                   the question. */}
                 {parentHints.length > 0 && (

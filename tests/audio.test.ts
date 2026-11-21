@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { readForestSoundOn, saveForestSoundOn } from '@/features/forest/ambience'
 import { BrushingAudio } from '@/features/timer/audio'
 
 /** An audio node or param that accepts any call and setting. */
 function fakeNode(): Record<string, unknown> {
   const params: Record<string, unknown> = {}
   return new Proxy(params, {
-    get(target, key: string) {
+    get(target, key: string | symbol) {
+      if (typeof key === 'symbol') return undefined
       if (key in target) return target[key]
       if (['connect', 'disconnect', 'start', 'stop'].includes(key)) return () => undefined
       if (key.endsWith('AtTime') || key === 'cancelScheduledValues') return () => undefined
@@ -29,6 +31,7 @@ class FakeContext extends EventTarget {
     if (this.resumeResult === 'run') this.setState('running')
   })
   close = vi.fn(async () => this.setState('closed'))
+  suspend = vi.fn(async () => this.setState('suspended'))
   oscillators = 0
 
   constructor() {
@@ -45,7 +48,11 @@ class FakeContext extends EventTarget {
   createDelay = fakeNode
   createBiquadFilter = fakeNode
   createDynamicsCompressor = fakeNode
-  createBufferSource = fakeNode
+  bufferSources = 0
+  createBufferSource = () => {
+    this.bufferSources++
+    return fakeNode()
+  }
   createBuffer = fakeNode
   createOscillator = () => {
     this.oscillators++
@@ -57,13 +64,26 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 let doc: EventTarget & { visibilityState: string }
 let win: EventTarget & { AudioContext: typeof FakeContext }
-let nav: { audioSession?: { type: string } }
+type FakeMedia = {
+  playbackState: string
+  handlers: Map<string, (() => void) | null>
+  setActionHandler: (action: string, handler: (() => void) | null) => void
+}
+let nav: { audioSession?: { type: string }; mediaSession?: FakeMedia }
 
 beforeEach(() => {
   FakeContext.made = []
   doc = Object.assign(new EventTarget(), { visibilityState: 'visible' })
   win = Object.assign(new EventTarget(), { AudioContext: FakeContext })
-  nav = { audioSession: { type: 'auto' } }
+  const handlers = new Map<string, (() => void) | null>()
+  nav = {
+    audioSession: { type: 'auto' },
+    mediaSession: {
+      playbackState: 'none',
+      handlers,
+      setActionHandler: (action, handler) => handlers.set(action, handler),
+    },
+  }
   vi.stubGlobal('document', doc)
   vi.stubGlobal('window', win)
   vi.stubGlobal('navigator', nav)
@@ -78,7 +98,7 @@ const latest = () => FakeContext.made.at(-1)!
 describe('BrushingAudio after another app took the sound', () => {
   test('the first tap makes a context with the playback audio session', () => {
     const audio = new BrushingAudio()
-    audio.unlock()
+    audio.startBrushing(false)
     expect(FakeContext.made).toHaveLength(1)
     expect(nav.audioSession?.type).toBe('playback')
   })
@@ -181,5 +201,162 @@ describe('BrushingAudio after another app took the sound', () => {
     await flush()
     expect(ctx.state).toBe('running')
     audio.stopMusic()
+  })
+})
+
+describe('forest sound on the home page', () => {
+  test('waits for the first tap, then plays in the new context', () => {
+    const audio = new BrushingAudio()
+    audio.startForest('day')
+    expect(FakeContext.made).toHaveLength(0)
+    audio.unlock()
+    expect(latest().bufferSources).toBeGreaterThan(0)
+  })
+
+  test('birds chirp now and then, and stop with the forest', () => {
+    vi.useFakeTimers()
+    try {
+      const audio = new BrushingAudio()
+      audio.unlock()
+      audio.startForest('day')
+      const ctx = latest()
+      const wind = ctx.oscillators
+      vi.advanceTimersByTime(15_000)
+      expect(ctx.oscillators).toBeGreaterThan(wind)
+      audio.stopForest()
+      const after = ctx.oscillators
+      vi.advanceTimersByTime(60_000)
+      expect(ctx.oscillators).toBe(after)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('the same mood twice does not start a second forest; a new mood does', () => {
+    const audio = new BrushingAudio()
+    audio.unlock()
+    audio.startForest('day')
+    const ctx = latest()
+    const first = ctx.bufferSources
+    audio.startForest('day')
+    expect(ctx.bufferSources).toBe(first)
+    audio.startForest('evening')
+    expect(ctx.bufferSources).toBe(first * 2)
+    audio.stopForest()
+  })
+
+  test('the forest comes back in a fresh context', () => {
+    const audio = new BrushingAudio()
+    audio.unlock()
+    audio.startForest('evening')
+    latest().state = 'closed'
+    audio.unlock()
+    expect(FakeContext.made).toHaveLength(2)
+    expect(latest().bufferSources).toBeGreaterThan(0)
+    audio.stopForest()
+  })
+
+  test('a stopped forest does not come back with a fresh context', () => {
+    const audio = new BrushingAudio()
+    audio.unlock()
+    audio.startForest('day')
+    audio.stopForest()
+    latest().state = 'closed'
+    audio.unlock()
+    expect(latest().bufferSources).toBe(0)
+  })
+})
+
+describe('forest sound setting', () => {
+  test('is on by default and remembers off and on', () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+    })
+    expect(readForestSoundOn()).toBe(true)
+    saveForestSoundOn(false)
+    expect(readForestSoundOn()).toBe(false)
+    saveForestSoundOn(true)
+    expect(readForestSoundOn()).toBe(true)
+  })
+
+  test('without storage it stays on and saving does not throw', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => {
+        throw new Error('blocked')
+      },
+    })
+    expect(readForestSoundOn()).toBe(true)
+    expect(() => saveForestSoundOn(false)).not.toThrow()
+  })
+})
+
+describe('silence when nothing sounds', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  test('after brushing is done and the last bell faded, the context is suspended', () => {
+    const audio = new BrushingAudio()
+    audio.startBrushing(true)
+    const ctx = latest()
+    expect(nav.mediaSession?.playbackState).toBe('playing')
+    audio.stopBrushing()
+    audio.finishMelody()
+    vi.advanceTimersByTime(3000)
+    expect(ctx.suspend).not.toHaveBeenCalled() // the bells still ring
+    ctx.currentTime = 10
+    vi.advanceTimersByTime(10_000)
+    expect(ctx.suspend).toHaveBeenCalled()
+    expect(ctx.state).toBe('suspended')
+    expect(nav.mediaSession?.playbackState).toBe('none')
+  })
+
+  test('a context suspended on purpose is not woken by the page, only by new sound', () => {
+    const audio = new BrushingAudio()
+    audio.startBrushing(true)
+    const ctx = latest()
+    audio.stopBrushing()
+    vi.advanceTimersByTime(5000)
+    expect(ctx.state).toBe('suspended')
+    ctx.resume.mockClear()
+    doc.dispatchEvent(new Event('visibilitychange'))
+    win.dispatchEvent(new Event('focus'))
+    doc.dispatchEvent(new Event('pointerdown'))
+    audio.unlock() // a tap on the page while nothing should sound
+    expect(ctx.resume).not.toHaveBeenCalled()
+    audio.startForest('day')
+    expect(ctx.resume).toHaveBeenCalled()
+    audio.stopForest()
+  })
+
+  test('the session is "playback" while brushing and "ambient" for the forest and after', () => {
+    const audio = new BrushingAudio()
+    audio.startForest('day')
+    audio.unlock()
+    expect(nav.audioSession?.type).toBe('ambient')
+    audio.stopForest()
+    audio.startBrushing(false)
+    expect(nav.audioSession?.type).toBe('playback')
+    audio.stopBrushing()
+    audio.switchJingle() // a jingle still playing keeps it
+    expect(nav.audioSession?.type).toBe('playback')
+    latest().currentTime = 10
+    vi.advanceTimersByTime(10_000)
+    expect(nav.audioSession?.type).toBe('ambient')
+  })
+
+  test('Now Playing buttons are wired while brushing and cleared after', () => {
+    const audio = new BrushingAudio()
+    const pause = vi.fn()
+    audio.setMediaControls({ play: vi.fn(), pause })
+    nav.mediaSession?.handlers.get('pause')?.()
+    expect(pause).toHaveBeenCalled()
+    audio.setMediaControls(null)
+    expect(nav.mediaSession?.handlers.get('play')).toBeNull()
+    expect(nav.mediaSession?.handlers.get('pause')).toBeNull()
   })
 })

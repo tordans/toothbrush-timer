@@ -97,3 +97,18 @@ export const FrameIcon = ({ className }: P) => (
     <path d="M3.5 17.5 9.5 13l4 3 3-2.5 4 3.5" />
   </svg>
 )
+
+/** A speaker with sound waves: the forest sound is on. */
+export const SoundIcon = ({ className }: P) => (
+  <svg {...base} className={className}>
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" fill="currentColor" />
+    <path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" />
+  </svg>
+)
+
+export const SoundOffIcon = ({ className }: P) => (
+  <svg {...base} className={className}>
+    <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" opacity="0.5" />
+    <path d="M16 9.5l5 5M21 9.5l-5 5" />
+  </svg>
+)
