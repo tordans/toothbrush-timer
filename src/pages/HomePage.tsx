@@ -23,7 +23,7 @@ import { useActiveKidId, useFamily, useFamilyActions } from '@/features/family/f
 import { activeKids, isBrushed } from '@/features/family/queries'
 import type { Animal as AnimalId, Toothbrush } from '@/features/family/schema'
 import { ForestWeek, type DayStatus } from '@/features/forest/ForestWeek'
-import { dayLightForSlot, seasonFor, SKY } from '@/features/forest/scenery'
+import { dayLightForSlot, GROUND, seasonFor, SKY } from '@/features/forest/scenery'
 import { useForestSound } from '@/features/forest/use-forest-sound'
 import { ParentGateDialog } from '@/features/parent-gate/ParentGateDialog'
 import { ParentHintDialog } from '@/features/parent-gate/ParentHintDialog'
@@ -63,12 +63,14 @@ export function HomePage() {
   const labelColor = dark
     ? 'text-cream [text-shadow:0_0_6px_rgb(0_0_0/0.5),0_1px_3px_rgb(0_0_0/0.45)]'
     : 'text-bark-900 [text-shadow:0_0_6px_rgb(255_255_255/0.9),0_1px_2px_rgb(255_255_255/0.8)]'
-  useThemeColor(SKY[light][0])
   const sound = useForestSound(dark ? 'evening' : 'day')
 
   const today = isoDay(now)
   const photo = usePhotoReward(kid?.id, now)
   const days = daysAround(now, week)
+  const season = seasonFor(days[3] ?? now)
+  const ground = GROUND[season][dark ? 'dark' : 'light'][1]
+  useThemeColor(SKY[light][0], ground)
   const dayStatus: DayStatus[] = days.map((d) => {
     const key = isoDay(d)
     return {
@@ -106,7 +108,7 @@ export function HomePage() {
           days={dayStatus}
           animal={kid?.animal ?? null}
           light={light}
-          season={seasonFor(days[3] ?? now)}
+          season={season}
           aspect={forestSize.width / forestSize.height}
           onAnimalTap={kid ? () => setPickingAnimal(true) : undefined}
           onPhotoTap={
@@ -116,7 +118,7 @@ export function HomePage() {
 
         {/* Top of the sky: the buttons row, and below it the start button. The row stays clear of
             the dark shade iPadOS draws behind the status bar. */}
-        <div className="absolute inset-x-0 top-0 flex flex-col gap-3 pt-[max(1.25rem,calc(env(safe-area-inset-top)+1rem))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
+        <div className="absolute inset-x-0 top-0 flex flex-col gap-3 pt-[max(1.25rem,calc(var(--safe-top)+1rem))] pl-[max(0.75rem,var(--safe-left))] pr-[max(0.75rem,var(--safe-right))]">
           <div className="flex items-start justify-between gap-2">
             {/* min-w-0: names shrink first, so the parents' gear always stays on screen */}
             <div className="flex min-w-0 flex-1 flex-wrap gap-2">
@@ -261,11 +263,12 @@ export function HomePage() {
 
           {/* Start brushing, up in the sky, so the ground with the days reaches the bottom edge.
             Only the button takes taps, the forest beside it stays tappable. In portrait it sits on
-            the right, where the path to the first day leaves room. */}
+            the right, where the path to the first day leaves room; in landscape on the left, clear
+            of today's animal and its thought bubble in the middle and of the sun on the right. */}
           {kid && (
             <Button
               size="lg"
-              className="self-center text-2xl portrait:self-end"
+              className="self-start text-2xl portrait:self-end [@media(max-height:500px)]:px-5 [@media(max-height:500px)]:py-2.5 [@media(max-height:500px)]:text-xl"
               onClick={() => void navigate({ to: '/putzen', search: { kid: kid.id, slot } })}
             >
               Zähne putzen
@@ -369,12 +372,15 @@ function AnimalDialog({
 }) {
   return (
     <div
-      className="absolute inset-0 flex overflow-y-auto bg-moss-950/40 p-4"
+      className="absolute inset-0 flex overflow-y-auto bg-moss-950/40 pb-[max(0.75rem,var(--safe-bottom))] pl-[max(0.75rem,var(--safe-left))] pr-[max(0.75rem,var(--safe-right))] pt-[max(0.75rem,var(--safe-top))]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <Card className="m-auto flex w-full max-w-2xl animate-fadein flex-col gap-4">
+      {/* All seven animals at once, also on a phone in landscape: the card is never wider than
+          two rows of four tiles fit into the screen's height (18.5rem: the margins, the heading and
+          the tiles' padding and names). */}
+      <Card className="m-auto flex w-full max-w-[min(42rem,calc(200vh-18.5rem))] animate-fadein flex-col gap-3 p-4 sm:p-5 supports-[height:1dvh]:max-w-[min(42rem,calc(200dvh-18.5rem))]">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-2xl font-extrabold">Wer putzt mit dir, {name}?</h2>
           {/* Tapping an animal takes it at once; this only closes without a change. */}

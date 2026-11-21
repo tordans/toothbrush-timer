@@ -128,8 +128,8 @@ export function PhotoPage() {
   const boardH = Math.floor(boardW / aspect)
 
   return (
-    <main className="flex h-full touch-manipulation select-none flex-col overflow-hidden bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] landscape:flex-row">
-      <aside className="flex shrink-0 flex-col gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] landscape:w-64 landscape:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:landscape:w-80">
+    <main className="flex h-full touch-manipulation select-none flex-col overflow-hidden bg-moss-800 pl-[var(--safe-left)] pr-[var(--safe-right)] landscape:flex-row">
+      <aside className="flex shrink-0 flex-col gap-3 px-3 pt-[max(0.75rem,var(--safe-top))] landscape:w-64 landscape:pb-[max(0.75rem,var(--safe-bottom))] lg:landscape:w-80">
         <div className="flex flex-wrap items-center gap-2 landscape:flex-col landscape:items-start">
           <Button variant="ghost" onClick={back}>
             <ChevronLeft className="h-5 w-5" />
@@ -176,7 +176,7 @@ export function PhotoPage() {
 
       <div
         ref={area}
-        className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center pb-[env(safe-area-inset-bottom)] landscape:pt-[env(safe-area-inset-top)]"
+        className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center pb-[var(--safe-bottom)] landscape:pt-[var(--safe-top)]"
       >
         {info ? (
           boardW > 0 && (
@@ -229,18 +229,28 @@ function Status({
   onGo: () => void
 }) {
   let text: string
+  // A longer explanation goes below the short headline, in smaller type.
+  let note: string | undefined
   if (allFree) text = 'Das ganze Bild ist frei!'
   else if (!isCurrent) text = 'Diese Woche ist vorbei'
   else if (left === 1) text = 'Noch 1 Feld zum Freimachen'
   else if (left > 0) text = `Noch ${left} Felder zum Freimachen`
-  else if (earnedNone) text = 'Nach dem Zähneputzen darfst du Felder freimachen'
-  else text = 'Alles freigemacht. Neue Felder gibt es beim nächsten Morgen- oder Abendputzen'
+  else if (earnedNone) text = 'Nach dem Zähneputzen darfst du Felder freimachen.'
+  else {
+    text = 'Alles freigemacht.'
+    note = 'Neue Felder gibt es beim nächsten Morgen- oder Abendputzen.'
+  }
 
   const icons = Math.min(left, 8)
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-1 text-cream landscape:flex-col landscape:items-start">
       <div className="flex flex-col gap-1">
-        <p className="text-xl font-extrabold sm:text-2xl">{text}</p>
+        <p className="text-xl font-extrabold sm:text-2xl [@media(max-height:500px)]:text-lg">
+          {text}
+        </p>
+        {note && (
+          <p className="font-semibold opacity-80 [@media(max-height:500px)]:text-sm">{note}</p>
+        )}
         {!isCurrent && <p className="font-bold opacity-75">{range}</p>}
         {icons > 0 && (
           <div className="flex flex-wrap gap-1" aria-hidden="true">

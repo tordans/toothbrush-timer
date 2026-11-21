@@ -32,9 +32,9 @@ export function ParentsPage() {
   const showTab = (next: 'putzen' | 'fotos') =>
     void navigate({ to: '/eltern', search: next === 'putzen' ? {} : { tab: next }, replace: true })
   return (
-    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[var(--safe-left)] pr-[var(--safe-right)]">
       {/* The one way out stays in view while scrolling, like on the calendar. */}
-      <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+      <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,var(--safe-top))] backdrop-blur-sm">
         {/* Same column and padding as the sections below, so the button lines up with them. */}
         <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-3 px-4">
           <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>

@@ -12,17 +12,21 @@ const MOSS_BAR = '#354722'
  * the page background takes the colour of the top of the screen (the sky in the forest), and the
  * fade disappears into it. theme-color is still set for browsers that tint their bars with it.
  * Leaving the page puts the defaults back.
+ *
+ * `bottom` colours the lower half of the page background: where the Home Screen app shows a band
+ * below the page (home indicator), it continues the ground instead of the sky.
  */
-export function useThemeColor(color: string) {
+export function useThemeColor(color: string, bottom = color) {
   useEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     if (meta) meta.content = color
-    document.documentElement.style.backgroundColor = color
-    document.body.style.backgroundColor = color
+    const background = `linear-gradient(${color} 50%, ${bottom} 50%) ${color}`
+    document.documentElement.style.background = background
+    document.body.style.background = background
     return () => {
       if (meta) meta.content = MOSS_BAR
-      document.documentElement.style.backgroundColor = ''
-      document.body.style.backgroundColor = ''
+      document.documentElement.style.background = ''
+      document.body.style.background = ''
     }
-  }, [color])
+  }, [color, bottom])
 }

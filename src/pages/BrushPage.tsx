@@ -174,7 +174,7 @@ export function BrushPage() {
       )}
     >
       {/* top controls */}
-      <div className="flex items-center justify-between pb-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:pb-4">
+      <div className="flex items-center justify-between pb-3 pl-[max(0.75rem,var(--safe-left))] pr-[max(0.75rem,var(--safe-right))] pt-[max(0.75rem,var(--safe-top))] sm:pb-4">
         <button
           type="button"
           onClick={close}
@@ -198,7 +198,7 @@ export function BrushPage() {
 
       {/* One stage for every phase: the picture box and the text column keep their size and place,
           the phases only fade their content in and out, so nothing jumps. */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] landscape:flex-row landscape:gap-10">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 pb-[max(1.5rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))] landscape:flex-row landscape:gap-10">
         {/* dial with the animal, and in its place the "Fertig!" scene */}
         <div
           data-testid="brush-picture"

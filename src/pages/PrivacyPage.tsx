@@ -26,7 +26,7 @@ function ExternalLink({ href, children }: { href: string; children: ReactNode })
 export function PrivacyPage() {
   const navigate = useNavigate()
   return (
-    <main className="h-full select-text overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
+    <main className="h-full select-text overflow-y-auto bg-moss-800 pl-[var(--safe-left)] pr-[var(--safe-right)] pt-[var(--safe-top)]">
       <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 pb-16">
         <Button variant="ghost" className="self-start" onClick={() => void navigate({ to: '/' })}>
           <ChevronLeft className="h-5 w-5" />
