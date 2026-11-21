@@ -80,14 +80,14 @@ export function AnimalPicker({
           aria-checked={value === animal}
           onClick={() => onChange(animal)}
           className={twMerge(
-            'flex w-[calc((100%-1rem)/3)] min-w-0 cursor-pointer touch-manipulation select-none flex-col items-center gap-1 rounded-3xl border-4 p-2 transition active:scale-95 sm:w-[calc((100%-2.25rem)/4)] sm:p-3',
+            'flex w-[calc((100%-1rem)/3)] min-w-0 cursor-pointer touch-manipulation select-none flex-col items-center gap-1 rounded-3xl border-4 p-2 transition active:scale-95 sm:w-[calc((100%-2.25rem)/4)] sm:p-3 [@media(max-height:500px)]:p-2',
             value === animal
               ? 'border-sun bg-white text-bark-900 shadow-md'
               : 'border-transparent bg-moss-50 text-bark-700',
           )}
         >
           <Animal animal={animal} className="aspect-square h-auto w-full" />
-          <span className="w-full hyphens-auto break-words text-center text-xs font-bold leading-tight sm:text-sm">
+          <span className="w-full hyphens-auto break-words text-center text-xs font-bold leading-tight sm:text-sm [@media(max-height:500px)]:text-xs">
             {ANIMAL_NAMES[animal]}
           </span>
         </button>

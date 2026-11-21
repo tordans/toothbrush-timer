@@ -71,8 +71,8 @@ export function OverviewPage() {
   const years = [...new Set(months.map((m) => m.getFullYear()))]
 
   return (
-    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
+    <main className="h-full touch-manipulation overflow-y-auto bg-moss-800 pl-[var(--safe-left)] pr-[var(--safe-right)]">
+      <div className="sticky top-0 z-10 bg-moss-800/95 pb-3 pt-[max(0.75rem,var(--safe-top))] backdrop-blur-sm">
         {/* Same column as the months below, so on a tablet the buttons sit next to the calendar. */}
         <div className="mx-auto flex max-w-xl flex-wrap items-center gap-2 px-4">
           <Button variant="ghost" onClick={() => void navigate({ to: '/' })}>

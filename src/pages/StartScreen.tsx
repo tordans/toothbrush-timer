@@ -32,7 +32,7 @@ export function StartScreen() {
   const linkKey = familyKeyFromInput(link)
 
   return (
-    <main className="flex h-full touch-manipulation overflow-y-auto bg-moss-800 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))]">
+    <main className="flex h-full touch-manipulation overflow-y-auto bg-moss-800 pb-[max(1rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))] pt-[max(1rem,var(--safe-top))]">
       <Card className="m-auto flex w-full max-w-md animate-fadein flex-col gap-5">
         <div className="flex items-center gap-3">
           <Animal animal="fox" className="h-16 w-16 shrink-0" />

@@ -187,15 +187,24 @@ function fitLayout(portrait: boolean, aspect: number): Layout {
     const lastStation = base.stations[base.stations.length - 1]?.y ?? base.h
     const fy = Math.min(1, (h - 110 - base.horizon) / (lastStation - base.horizon))
     const y = (v: number) => (v <= base.horizon ? v : base.horizon + (v - base.horizon) * fy)
-    const mapPt = <T extends Pt>(p: T): T => ({ ...p, y: y(p.y) })
+    // Narrow phones show less than the base width: the forest gets as wide as the screen shows.
+    // The path keeps its swing and moves to the middle; trees, bushes and flowers spread over the
+    // width that is left, so they stay between the path and the edges instead of being cut off.
+    const w = Math.min(base.w, Math.max(600, h * aspect))
+    const dx = (base.w - w) / 2
+    const fx = w / base.w
+    const onPath = <T extends Pt>(p: T): T => ({ ...p, x: p.x - dx, y: y(p.y) })
+    const spread = <T extends Pt>(p: T): T => ({ ...p, x: p.x * fx, y: y(p.y) })
     return {
       ...base,
+      w,
       h,
-      stations: base.stations.map(mapPt),
-      grow: base.grow.map(mapPt),
-      front: base.front.map(mapPt),
-      pathStart: mapPt(base.pathStart),
-      pathEnd: { ...base.pathEnd, y: h + 40 },
+      stations: base.stations.map(onPath),
+      grow: base.grow.map(spread),
+      front: base.front.map(spread),
+      back: base.back.map((t) => ({ ...t, x: t.x * fx })),
+      pathStart: onPath(base.pathStart),
+      pathEnd: { ...base.pathEnd, x: base.pathEnd.x - dx, y: h + 40 },
     }
   }
   const base = LANDSCAPE
@@ -420,9 +429,10 @@ export function ForestWeek({
       })}
 
       {todayStation && animal && (
-        // The child's animal waits left of today's clearing.
+        // The child's animal waits left of today's clearing, or right of it where the left edge
+        // is too close (portrait, clearing on the left side of the path).
         <svg
-          x={todayStation.x - 250}
+          x={todayStation.x - 250 >= 0 ? todayStation.x - 250 : todayStation.x + 100}
           y={todayStation.y - (portrait ? 150 : 170)}
           width="150"
           height="150"
