@@ -110,7 +110,7 @@ export function playForest(v: Out, mood: ForestMood): Forest {
   const { ctx } = v
   const out = ctx.createGain()
   out.gain.setValueAtTime(0.0001, ctx.currentTime)
-  out.gain.exponentialRampToValueAtTime(1, ctx.currentTime + FADE)
+  out.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + FADE)
   out.connect(v.out)
   const here = { ctx, out }
 

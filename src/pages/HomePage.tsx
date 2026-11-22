@@ -262,13 +262,15 @@ export function HomePage() {
           </div>
 
           {/* Start brushing, up in the sky, so the ground with the days reaches the bottom edge.
-            Only the button takes taps, the forest beside it stays tappable. In portrait it sits on
-            the right, where the path to the first day leaves room; in landscape on the left, clear
-            of today's animal and its thought bubble in the middle and of the sun on the right. */}
+            Only the button takes taps, the forest beside it stays tappable. In landscape with room
+            (the iPad) it sits big in the middle of the sky, above the animal and its thought bubble.
+            Elsewhere the sky is too small for the middle: in portrait it sits on the right, where
+            the path to the first day leaves room; in a phone's landscape on the left, clear of the
+            bubble in the middle and of the sun. */}
           {kid && (
             <Button
               size="lg"
-              className="self-start text-2xl portrait:self-end [@media(max-height:500px)]:px-5 [@media(max-height:500px)]:py-2.5 [@media(max-height:500px)]:text-xl"
+              className="self-start text-2xl portrait:self-end [@media(max-height:500px)]:px-5 [@media(max-height:500px)]:py-2.5 [@media(max-height:500px)]:text-xl [@media(orientation:landscape)_and_(min-width:700px)_and_(min-height:640px)]:mt-[2vh] [@media(orientation:landscape)_and_(min-width:700px)_and_(min-height:640px)]:self-center [@media(orientation:landscape)_and_(min-width:700px)_and_(min-height:640px)]:px-12 [@media(orientation:landscape)_and_(min-width:700px)_and_(min-height:640px)]:py-5 [@media(orientation:landscape)_and_(min-width:700px)_and_(min-height:640px)]:text-3xl"
               onClick={() => void navigate({ to: '/putzen', search: { kid: kid.id, slot } })}
             >
               Zähne putzen
