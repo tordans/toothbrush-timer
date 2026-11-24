@@ -1,4 +1,12 @@
-import { addDays, format, isValid, parseISO, startOfISOWeek } from 'date-fns'
+import {
+  addDays,
+  format,
+  getISOWeek,
+  getISOWeekYear,
+  isValid,
+  parseISO,
+  startOfISOWeek,
+} from 'date-fns'
 import { de } from 'date-fns/locale'
 import type { Slot } from '@/features/family/schema'
 
@@ -58,4 +66,29 @@ export function fromIsoDay(day: string): Date {
 export function timeLabel(iso: string): string {
   const date = parseISO(iso)
   return isValid(date) ? format(date, 'HH:mm') : ''
+}
+
+/** ISO calendar week number of the week that starts on Monday `week`. */
+export function weekNumber(week: string): number {
+  return getISOWeek(parseISO(week))
+}
+
+/** The year the ISO calendar week belongs to (around New Year it differs from the date's year). */
+export function weekYear(week: string): number {
+  return getISOWeekYear(parseISO(week))
+}
+
+/** Compact date range of a week: `12.–18. Jan.`, or `30. Nov. – 6. Dez.` across two months. */
+export function weekRangeShort(week: string): string {
+  const first = parseISO(week)
+  const last = addDays(first, 6)
+  if (first.getMonth() === last.getMonth()) {
+    return `${first.getDate()}.–${last.getDate()}. ${format(last, 'MMM', { locale: de })}`
+  }
+  return `${format(first, 'd. MMM', { locale: de })} – ${format(last, 'd. MMM', { locale: de })}`
+}
+
+/** `KW 3 · 12.–18. Jan.` */
+export function weekLabel(week: string): string {
+  return `KW ${weekNumber(week)} · ${weekRangeShort(week)}`
 }

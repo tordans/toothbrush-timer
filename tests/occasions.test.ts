@@ -63,7 +63,7 @@ describe('photos kept for an occasion', () => {
   const family = kept({ xmas: 'christmas', wichtel: 'advent', nikolaus: 'nikolaus' })
 
   it('waits for its week and is then preferred', () => {
-    expect(regularPhotos(family, photos).map((p) => p.id)).toEqual(['old'])
+    expect(regularPhotos(family, photos, '2026-11-16').map((p) => p.id)).toEqual(['old'])
     expect(photoForWeek(family, photos, '2026-11-16', '2026-11-16')?.photo.id).toBe('old')
     expect(photoForWeek(family, photos, '2026-11-30', '2026-11-30')?.photo.id).toBe('nikolaus')
     expect(photoForWeek(family, photos, '2026-12-07', '2026-12-07')?.photo.id).toBe('wichtel')

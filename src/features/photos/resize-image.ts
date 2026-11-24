@@ -33,8 +33,27 @@ function toBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, type, QUALITY))
 }
 
-/** Null when the file is not an image the browser can read. */
-export async function resizeImage(file: Blob): Promise<ResizedImage | null> {
+/** A photo that takes longer than this counts as failed: some iPhones never finish a decode. */
+const RESIZE_TIMEOUT_MS = 30_000
+
+/** Null when the file is not an image the browser can read, or when it takes too long. */
+export function resizeImage(file: Blob): Promise<ResizedImage | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), RESIZE_TIMEOUT_MS)
+    resizeUnbounded(file).then(
+      (result) => {
+        clearTimeout(timer)
+        resolve(result)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(null)
+      },
+    )
+  })
+}
+
+async function resizeUnbounded(file: Blob): Promise<ResizedImage | null> {
   let source: ImageBitmap | HTMLImageElement
   try {
     source = await decode(file)

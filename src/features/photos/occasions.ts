@@ -7,7 +7,7 @@ import { isoDay, weekKey } from '@/lib/dates'
  * when two fall into one week, the earlier one wins. Advent comes last, so the Wichtel only
  * appear in Advent weeks without another occasion.
  */
-export const OCCASIONS = [
+const OCCASIONS = [
   { id: 'nikolaus', name: 'Nikolaus' },
   { id: 'christmas', name: 'Weihnachten' },
   { id: 'new-year', name: 'Silvester' },

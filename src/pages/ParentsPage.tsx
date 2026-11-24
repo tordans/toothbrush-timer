@@ -16,7 +16,6 @@ import {
 import { activeKids, brushingsFor } from '@/features/family/queries'
 import { SLOTS, type Animal as AnimalId, type Kid, type Toothbrush } from '@/features/family/schema'
 import { ANIMAL_NAMES } from '@/features/forest/Animal'
-import { OccasionsOverview } from '@/features/photos/OccasionsOverview'
 import { PhotoManager } from '@/features/photos/PhotoManager'
 import { ShortcutsGuide } from '@/features/photos/ShortcutsGuide'
 import { renewFamilyKey } from '@/features/sync/api'
@@ -65,9 +64,6 @@ export function ParentsPage() {
         ) : (
           <>
             <PhotosSection />
-            <Section title="Besondere Wochen">
-              <OccasionsOverview />
-            </Section>
             <Section title="Bilder mit Apple Intelligence">
               <ShortcutsGuide />
             </Section>

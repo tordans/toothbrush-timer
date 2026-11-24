@@ -49,6 +49,11 @@ type FamilyStore = {
     revealCells: (week: string, photoId: string, kidId: string, cells: number[]) => void
     /** Keeps a photo for an occasion's week, or (null) puts it back into the normal order. */
     setPhotoOccasion: (photoId: string, occasion: string | null) => void
+    /**
+     * Pins a photo to the week that starts on Monday `week`, or (null) puts it back into the
+     * normal order. Another unused photo pinned to the same week goes back to the normal order.
+     */
+    setPhotoWeek: (photoId: string, week: string | null) => void
     connect: (familyKey: string) => void
     disconnect: () => void
     /** Used by the sync engine only. */
@@ -162,6 +167,20 @@ const useFamilyStore = create<FamilyStore>()(
               ...f,
               photoOccasions: { ...f.photoOccasions, [photoId]: { occasion, updatedAt: nowIso() } },
             })),
+          setPhotoWeek: (photoId, week) =>
+            change((f) => {
+              const now = nowIso()
+              const photoOccasions = { ...f.photoOccasions }
+              if (week) {
+                const shown = new Set(Object.values(f.weekPhotos).map((w) => w.photoId))
+                for (const [id, plan] of Object.entries(f.photoOccasions)) {
+                  if (id === photoId || plan.week !== week || shown.has(id)) continue
+                  photoOccasions[id] = { occasion: plan.occasion, updatedAt: now }
+                }
+              }
+              photoOccasions[photoId] = { occasion: null, week: week ?? undefined, updatedAt: now }
+              return { ...f, photoOccasions }
+            }),
           updateSettings: (patch) =>
             change((f) => ({ ...f, settings: { ...f.settings, ...patch, updatedAt: nowIso() } })),
           connect: (familyKey) =>

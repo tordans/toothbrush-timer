@@ -65,11 +65,13 @@ const weekPhotoSchema = z.object({
 export type WeekPhoto = z.infer<typeof weekPhotoSchema>
 
 /**
- * The occasion a photo is kept for (see docs/occasions.md), keyed by photo id. `occasion: null`
- * means the mark was taken off again; the record stays so the newer choice wins on merge.
+ * The plan of one photo (see docs/occasions.md), keyed by photo id: the occasion it is kept for,
+ * or the week it is pinned to (Monday, `YYYY-MM-DD`). `occasion: null` and no `week` mean the
+ * plan was taken off again; the record stays so the newer choice wins on merge.
  */
 const photoOccasionSchema = z.object({
   occasion: z.string().nullable(),
+  week: isoDate.optional(),
   updatedAt: z.string(),
 })
 

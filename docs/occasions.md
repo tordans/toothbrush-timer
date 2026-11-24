@@ -2,8 +2,8 @@
 
 Some weeks of the year belong to an occasion: Advent, Christmas, Easter, Halloween and so on.
 For these weeks, parents can prepare a photo in a matching style (see
-[photo-styles.md](photo-styles.md)) and mark it for the occasion. When the week comes, the app
-shows that photo instead of the next one in line.
+[photo-styles.md](photo-styles.md)) and pin it to the week. When the week comes, the app shows
+that photo instead of the next one in line.
 
 This document lists the occasions, how their week is found, and how the app should choose the
 photo. German names are kept where parents see them.
@@ -68,16 +68,22 @@ built-in one and wins over all built-in ones in its week.
 
 ## How a photo is chosen
 
-Today the current week takes the oldest unused photo until its first field is uncovered
-(`photoForWeek` in `src/features/photos/rewards.ts`). With occasions:
+One function, `planWeeks` in `src/features/photos/rewards.ts`, plans the photos of the coming
+weeks. The forest, the photo page and the parents' week list all use it, so they always agree.
+For each week, from the current one on:
 
-1. **An occasion photo for this week wins.** If an unused photo is marked for an occasion of this
-   week, the week takes it (the oldest, if there are several).
-2. **Occasion photos wait for their week.** The normal order skips photos marked for an occasion,
-   so a Christmas photo is never used up in October.
-3. **Without an occasion photo, the week goes on as usual.** An occasion never leaves a week
-   without a photo.
-4. **Once chosen, it stays.** As today, the choice is stored when the first field is uncovered.
+1. **A started week keeps its photo.** Once the first field is uncovered the choice is stored
+   (`weekPhotos`) and never changes.
+2. **A pinned photo wins.** An unused photo pinned to exactly this week is taken. Only one photo
+   can be pinned to a week; pinning a second one puts the first back into the normal order.
+3. **Then a photo kept for an occasion of this week** (older apps' marks stay honored, the
+   oldest one if there are several).
+4. **Otherwise the next photo of the normal order**, oldest first. The normal order skips photos
+   that are pinned to a week from now on or kept for an occasion, so a Christmas photo is never
+   used up in October. A pin to a week that has passed counts as normal again.
+
+Each photo is used at most once. An occasion never leaves a week without a photo: without an own
+photo, the week takes the next normal one.
 
 ### Priority
 
@@ -87,32 +93,42 @@ Herbst).
 
 ### Hint for parents
 
-The "!" on the parents' gear already warns a week ahead when no photo is left. It should also
-warn a week ahead when an occasion is coming and no photo is marked for it: "Nächste Woche ist
-Nikolaus. Möchtest du ein Nikolaus-Foto vorbereiten?" The warning only asks; the week still works
-without one.
+The "!" on the parents' gear warns a week ahead when no photo is planned for next week, and when
+next week has an occasion and no photo is pinned to it: "Nächste Woche ist Nikolaus. Möchtest du
+ein Nikolaus-Foto vorbereiten?" The warning only asks; the week still works without one.
 
 ## Data (as built)
 
-- `photoOccasions` in the family state (schema version 3): photo id → `{ occasion, updatedAt }`.
-  `occasion: null` means the mark was taken off. It merges like every other record (newer
-  `updatedAt` wins), so no server change was needed. Apps of version 2 refuse version 3 and ask to
-  reload, so an old phone never drops the marks.
+- `photoOccasions` in the family state (schema version 3): photo id → `{ occasion, week?,
+  updatedAt }`. This is the photo's plan: `week` is the Monday it is pinned to, `occasion` an
+  older kept-for-occasion mark. Both empty means the plan was taken off. It merges like every
+  other record (newer `updatedAt` wins), so no server change was needed. Apps of version 2 refuse
+  version 3 and ask to reload, so an old phone never drops the plans.
+- `setPhotoWeek(photoId, week | null)` pins a photo (replacing any occasion mark) or takes the
+  pin off. If another unused photo is pinned to that week, its pin is removed.
 - Built-in occasions are code (`src/features/photos/occasions.ts`): an id, a German name and the
   days that make a week belong to it. Easter is calculated.
-- The parents mark a photo in the "Fotos" tab of the parents' area ("Für welche Woche?"). The
-  section "Besondere Wochen" lists the coming year's occasion weeks with "Foto bereit" or "Noch
-  kein Foto".
-- The hint: when next week has an occasion without a kept photo (or no photo is left at all), an
-  orange "!" sits next to the parents' gear. A plain tap opens the hint, without the parents'
+- The parents see the week plan in the "Fotos" tab of the parents' area: one row per calendar
+  week (KW) from the current week on, at least nine weeks, as far as photos are planned. Occasion
+  weeks are highlighted, and weeks with an occasion up to a year ahead follow under "Später im
+  Jahr". Each row shows the photo and whether it is pinned ("Fest eingeplant"), kept for the
+  occasion, or just the next normal photo ("Normales Foto – kein eigenes Nikolaus-Foto"). A row
+  offers "Verschieben" (a dialog with a week list; also back to the normal order, or delete) and
+  "+ Foto für diese Woche" (uploads one photo and pins it). Started weeks cannot be moved. The
+  photos of past weeks are in "Schon gezeigte Fotos". The new UI no longer tags occasions.
+- A photo uploaded in the app is listed under "Gerade hochgeladen" with its planned week and
+  "Woche ändern", until the parents hide it.
+- The hint: when next week has an occasion without a photo for it (or no photo is planned at all),
+  an orange "!" sits next to the parents' gear. A plain tap opens the hint, without the parents'
   question, because it only informs. "Zu den Fotos" leads on through the parents' question to
   the "Fotos" tab.
 
 ## Decisions
 
-- A kept photo that was not used in its week waits for the same occasion next year. Parents can
-  take the mark off to put it back into the normal order.
-- One occasion per photo.
+- A photo kept for an occasion that was not used in its week waits for the same occasion next
+  year. Parents can put it back into the normal order in the move dialog.
+- A pin only counts for its own week; once that week has passed, the photo is a normal photo.
+- One occasion or one week per photo, and one pinned photo per week.
 - A past year's occasion photo does not come back; it stays visible in its week.
 
 ## Later
