@@ -22,8 +22,10 @@ import {
 
 type Props = {
   animal: AnimalId
-  /** The fields to clear, in this order. */
+  /** All fields of this run: the ones being cleared or cleared already, then the picked ones. */
   cells: number[]
+  /** The picked fields still waiting, in tap order. They may change while the animal runs. */
+  pending: number[]
   grid: Grid
   /** Width / height of the photo. */
   aspect: number
@@ -38,12 +40,13 @@ type Props = {
 const STOPPED = new Error('stopped')
 
 /**
- * The child's animal hops onto the photo, clears the chosen fields one after another in its own
- * way (see reveal-motion.ts) and hops off again. Mount it with a new `key` for every run.
+ * The child's animal hops onto the photo, clears the picked fields one after another in its own
+ * way (see reveal-motion.ts) and hops off again. A field the child unpicks on the way is skipped. Mount it with a new `key` for every run.
  */
 export function RevealAnimal({
   animal,
   cells,
+  pending,
   grid,
   aspect,
   onClearStart,
@@ -53,14 +56,21 @@ export function RevealAnimal({
   const mover = useRef<HTMLDivElement>(null)
   const face = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
-  const pieces = useRef<(HTMLDivElement | null)[]>([])
+  const pieces = useRef(new Map<number, HTMLDivElement>())
   const bits = useRef<(HTMLDivElement | null)[]>([])
   const [stuckLeaves, setStuckLeaves] = useState(0)
 
   const s = animalSize(grid)
   const b = bitSize(grid)
 
-  const latest = useEffectEvent(() => ({ animal, cells, grid, onClearStart, onCleared, onFinish }))
+  const latest = useEffectEvent(() => ({
+    animal,
+    pending,
+    grid,
+    onClearStart,
+    onCleared,
+    onFinish,
+  }))
 
   useEffect(() => {
     let alive = true
@@ -81,8 +91,8 @@ export function RevealAnimal({
     }
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // Fixed for the whole run.
-    const { animal, cells } = latest()
+    // The animal stays the same for the whole run.
+    const { animal } = latest()
 
     const runAll = async () => {
       const m = mover.current
@@ -92,16 +102,30 @@ export function RevealAnimal({
       const els = { mover: m, face: f, body: bd }
       let pos: Point | null = null
 
-      for (const [i, index] of cells.entries()) {
-        const { grid: g, onClearStart: start, onCleared: cleared } = latest()
+      // The child may still pick and unpick fields while the animal runs, so the next goal is
+      // read fresh every time.
+      for (;;) {
+        const { grid: g, pending, onClearStart: start } = latest()
         const size = animalSize(g)
-        const bit = bitSize(g)
-        const cell = cellOf(g, index)
-        const spot = besideCell(animal, cell, size)
+        const target = pending[0]
 
+        if (target === undefined) {
+          if (!pos) break
+          if (reduced) break
+          // Hop off, but come back when the child picks a field meanwhile.
+          const out = { x: pos.x < g.width / 2 ? -size * 0.8 : g.width + size * 0.8, y: pos.y }
+          pos = await travel(play, els, animal, pos, out, size, () => !latest().pending.length)
+          if (latest().pending.length) continue
+          break
+        }
+
+        const bit = bitSize(g)
+        const cell = cellOf(g, target)
+        const spot = besideCell(animal, cell, size)
         if (reduced) {
           m.style.transform = moverAt(spot, size)
           if (!pos) await play(m, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 })
+          pos = spot
         } else {
           // Hop in from the nearer side edge of the photo.
           if (!pos) {
@@ -109,19 +133,22 @@ export function RevealAnimal({
             m.style.transform = moverAt(pos, size)
             m.style.opacity = '1'
           }
-          await travel(play, els, animal, pos, spot, size)
+          // Turn round as soon as the child takes the goal back.
+          pos = await travel(play, els, animal, pos, spot, size, () =>
+            latest().pending.includes(target),
+          )
         }
-        pos = spot
+        if (latest().pending[0] !== target) continue
         lookTo(f, -cell.side)
 
         // Swap the field from the main cover to the piece in the same frame.
-        const piece = pieces.current[i]
+        const piece = pieces.current.get(target)
         const bitEls = bits.current.filter((el): el is HTMLDivElement => !!el)
         if (!piece || bitEls.length === 0) return
         piece.style.transformOrigin = `${cell.cx}px ${cell.cy}px`
         piece.style.transform = 'none'
         piece.style.opacity = '1'
-        const hs = heroSpot(animal, index)
+        const hs = heroSpot(animal, target)
         const hero = {
           x: cell.x + hs.fx * cell.w,
           y: cell.y + hs.fy * cell.h,
@@ -132,7 +159,7 @@ export function RevealAnimal({
         const heroBit = bitEls[0]!
         heroBit.style.transform = bitAt(hero, bit, hero.scale, hero.rot)
         heroBit.style.opacity = '1'
-        start(index)
+        start(target)
 
         const stage: Stage = {
           play,
@@ -151,18 +178,11 @@ export function RevealAnimal({
         else pos = await CLEAR[animal](stage)
         piece.style.opacity = '0'
         for (const el of bitEls) el.style.opacity = '0'
-        cleared(index)
+        latest().onCleared(target)
       }
 
-      // Hop off again.
-      const { grid: g, onFinish: finish } = latest()
-      const size = animalSize(g)
-      if (pos && !reduced) {
-        const out = { x: pos.x < g.width / 2 ? -size * 0.8 : g.width + size * 0.8, y: pos.y }
-        await travel(play, els, animal, pos, out, size)
-      }
       await play(m, [{ opacity: 1 }, { opacity: 0 }], { duration: 250 })
-      finish()
+      latest().onFinish()
     }
 
     runAll().catch((error: unknown) => {
@@ -179,11 +199,12 @@ export function RevealAnimal({
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
       <div className="absolute inset-0 overflow-hidden rounded-2xl">
-        {cells.map((cell, i) => (
+        {cells.map((cell) => (
           <div
             key={cell}
             ref={(el) => {
-              pieces.current[i] = el
+              if (el) pieces.current.set(cell, el)
+              else pieces.current.delete(cell)
             }}
             className="absolute inset-0"
             style={{ opacity: 0 }}

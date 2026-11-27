@@ -18,7 +18,7 @@
  */
 
 import type { Animal } from '@/features/family/schema'
-import { playForest, type Forest, type ForestMood } from '@/features/forest/ambience'
+import { playForest, type Forest, type ForestMood, type Hum } from '@/features/forest/ambience'
 import { SONGS, type Voices } from './music'
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext }
@@ -163,7 +163,7 @@ export class BrushingAudio {
     }
     if (this.forestMood) {
       this.forest?.stop(0)
-      this.forest = playForest({ ctx, out: this.forestBus }, this.forestMood)
+      this.forest = playForest({ ctx, out: this.forestBus }, this.forestMood, this.hum)
     }
     this.refresh()
   }
@@ -269,9 +269,18 @@ export class BrushingAudio {
     this.forestMood = mood
     this.rouse()
     if (this.ctx && this.forestBus && this.ctx.state !== 'closed') {
-      this.forest = playForest({ ctx: this.ctx, out: this.forestBus }, mood)
+      this.forest = playForest({ ctx: this.ctx, out: this.forestBus }, mood, this.hum)
     }
     this.refresh()
+  }
+
+  /** The animal's corner jingle, softly and without echo, for the forest. */
+  private hum: Hum = ({ ctx, out }, t) => {
+    const soft = ctx.createGain()
+    soft.gain.value = 0.35
+    soft.connect(out)
+    const song = SONGS[this.animal]
+    song.jingle({ ctx, out: soft, echo: soft }, t, 60 / song.eighthsPerMinute)
   }
 
   /** The forest sound fades out and stops. */

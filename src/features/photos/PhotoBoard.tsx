@@ -3,7 +3,7 @@ import { AnimalItem } from './animal-items'
 import { PhotoCover } from './PhotoCover'
 import { RevealAnimal } from './RevealAnimal'
 
-export type Run = { id: number; cells: number[] }
+export type Run = { id: number }
 
 type Props = {
   url: string | null
@@ -20,6 +20,8 @@ type Props = {
   marked: number[] | null
   onToggle: (cell: number) => void
   run: Run | null
+  /** Fields the animal started on in this run, in order. */
+  started: number[]
   onClearStart: (cell: number) => void
   onCleared: (cell: number) => void
   onFinish: () => void
@@ -38,6 +40,7 @@ export function PhotoBoard({
   marked,
   onToggle,
   run,
+  started,
   onClearStart,
   onCleared,
   onFinish,
@@ -78,7 +81,6 @@ export function PhotoBoard({
                   type="button"
                   aria-label={`Feld ${i + 1}`}
                   aria-pressed={markedSet.has(i)}
-                  disabled={!!run}
                   onClick={() => onToggle(i)}
                   className="relative touch-manipulation select-none rounded-lg outline-none focus-visible:bg-white/20 active:bg-white/25"
                 >
@@ -95,7 +97,8 @@ export function PhotoBoard({
         <RevealAnimal
           key={run.id}
           animal={animal}
-          cells={run.cells}
+          cells={[...started, ...(marked ?? [])]}
+          pending={marked ?? []}
           grid={{ width, height, cols, rows }}
           aspect={aspect}
           onClearStart={onClearStart}

@@ -1,7 +1,8 @@
 /**
  * The quiet sound of the forest on the home page, generated with the Web Audio API (no files):
- * soft wind in the leaves that swells and settles, and now and then a small animal sound. By day
- * a few birds chirp; in the evening crickets sing and sometimes an owl calls, all calmer.
+ * a faint, high rustle of leaves (no low rumble, which sounds like the sea) and now and then a
+ * small sound. By day a few birds chirp; in the evening crickets sing and sometimes an owl calls.
+ * Once in a while the child's animal hums a few notes of its own song (`hum`).
  *
  * Everything starts and ends softly (no sharp attacks), so it stays in the background.
  * It plays through the shared context of brushingAudio (see audio.ts), which also brings it back
@@ -11,6 +12,9 @@
 export type ForestMood = 'day' | 'evening'
 
 type Out = { ctx: AudioContext; out: AudioNode }
+
+/** Plays a few notes of the animal's song into `out`, starting at `t`. */
+export type Hum = (v: Out, t: number) => void
 
 export type Forest = {
   /** Fades out over `fade` seconds, then stops everything. */
@@ -106,30 +110,38 @@ function owl(v: Out, t: number) {
 }
 
 /** Starts the forest into `v.out` and returns how to stop it. */
-export function playForest(v: Out, mood: ForestMood): Forest {
+export function playForest(v: Out, mood: ForestMood, hum: Hum): Forest {
   const { ctx } = v
   const out = ctx.createGain()
   out.gain.setValueAtTime(0.0001, ctx.currentTime)
-  out.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + FADE)
+  out.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + FADE)
   out.connect(v.out)
   const here = { ctx, out }
 
   const noise = noiseBuffer(ctx)
   const evening = mood === 'evening'
   const loops = [
-    ...wind(here, noise, 'lowpass', evening ? 380 : 520, 0.35),
-    ...wind(here, noise, 'bandpass', evening ? 2200 : 3200, evening ? 0.04 : 0.06),
+    ...wind(here, noise, 'bandpass', evening ? 900 : 1200, 0.025),
+    ...wind(here, noise, 'bandpass', evening ? 2600 : 3600, evening ? 0.02 : 0.03),
   ]
 
   // Sparse animal sounds at random times; a timer is fine, they need not be exact.
   let timer: ReturnType<typeof setTimeout> | undefined
+  // The animal hums about every fifth sound, never twice in a row.
+  let hummed = true
   const next = () => {
-    const wait = evening ? 4 + Math.random() * 7 : 3 + Math.random() * 9
+    const wait = evening ? 5 + Math.random() * 8 : 4 + Math.random() * 9
     timer = setTimeout(() => {
       const t = ctx.currentTime + 0.05
-      if (!evening) bird(here, t)
-      else if (Math.random() < 0.2) owl(here, t)
-      else cricket(here, t)
+      if (!hummed && Math.random() < 0.2) {
+        hum(here, t)
+        hummed = true
+      } else {
+        hummed = false
+        if (!evening) bird(here, t)
+        else if (Math.random() < 0.2) owl(here, t)
+        else cricket(here, t)
+      }
       next()
     }, wait * 1000)
   }

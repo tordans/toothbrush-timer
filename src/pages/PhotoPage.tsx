@@ -75,40 +75,42 @@ export function PhotoPage() {
     : []
   // Marks on fields that got uncovered meanwhile (another phone) fall away.
   const marks = marked.filter((i) => !info?.revealed.has(i) && !startedSet.has(i))
+  // Fields the animal is clearing right now count against the budget until they are stored.
+  const inFlight = started.filter((i) => !info?.revealed.has(i)).length
   const canMark = isCurrent && !!info && (left > 0 || !!run)
 
-  const start = (cells: number[]) => {
-    if (!info || cells.length === 0 || run) return
+  const start = () => {
+    if (!info || run) return
     setRunKid({ id: kid.id, animal: kid.animal })
     setStarted([])
     setRunCount(runCount + 1)
-    setRun({ id: runCount + 1, cells })
+    setRun({ id: runCount + 1 })
   }
 
+  // Picked fields stay tappable until the animal starts on them, also while it runs: it then
+  // skips the field and turns to the next one.
   const toggle = (cell: number) => {
-    if (run) return
     brushingAudio.unlock()
     if (marks.includes(cell)) {
       setMarked(marks.filter((i) => i !== cell))
       return
     }
-    if (marks.length >= left) return
+    if (marks.length + inFlight >= left) return
     const next = [...marks, cell]
     setMarked(next)
     // All fields picked: the animal sets off right away.
-    if (next.length === left) start(next)
+    if (!run && next.length === left) start()
   }
 
   const onCleared = (cell: number) => {
     if (!info || !runKid) return
     revealCells(week, info.photo.id, runKid.id, [cell])
-    if (family.settings.gong) brushingAudio.chime(run?.cells.indexOf(cell) ?? 0)
+    if (family.settings.gong) brushingAudio.chime(Math.max(0, started.indexOf(cell)))
   }
 
   const onFinish = () => {
     setRun(null)
     setRunKid(null)
-    setMarked([])
     setStarted([])
   }
 
@@ -162,14 +164,14 @@ export function PhotoPage() {
             isCurrent={isCurrent}
             range={weekRangeLabel(weekDays(week).map(fromIsoDay))}
             left={left}
-            marks={marks.length}
+            marks={marks.length + inFlight}
             allFree={covered.length === 0 && started.length === 0}
             earnedNone={
               left === 0 &&
               !Object.values(family.weekPhotos[week]?.cells ?? {}).some((c) => c.kidId === kid.id)
             }
             showGo={marks.length > 0 && !run}
-            onGo={() => start(marks)}
+            onGo={start}
           />
         )}
       </aside>
@@ -192,6 +194,7 @@ export function PhotoPage() {
               marked={canMark ? marks : null}
               onToggle={toggle}
               run={run}
+              started={started}
               onClearStart={(cell) => setStarted((s) => [...s, cell])}
               onCleared={onCleared}
               onFinish={onFinish}

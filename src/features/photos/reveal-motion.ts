@@ -92,7 +92,10 @@ function hopPath(from: Point, to: Point, n: number, h: number, s: number): Keyfr
   })
 }
 
-/** Moves the animal: the owl flies in one arc, everyone else hops. */
+/**
+ * Moves the animal: the owl flies in one arc, everyone else hops. Between two hops `keepGoing`
+ * may stop the trip, so the animal can turn to a new goal. Returns where the animal stands.
+ */
 export async function travel(
   play: Play,
   els: { mover: HTMLElement; face: HTMLElement; body: HTMLElement },
@@ -100,10 +103,11 @@ export async function travel(
   from: Point,
   to: Point,
   s: number,
-) {
+  keepGoing: () => boolean = () => true,
+): Promise<Point> {
   const dx = to.x - from.x
   const dist = Math.hypot(dx, to.y - from.y)
-  if (dist < 2) return
+  if (dist < 2) return to
   if (Math.abs(dx) > 2) lookTo(els.face, dx)
   if (animal === 'owl') {
     const duration = Math.max(450, Math.min(900, dist * 1.4))
@@ -122,24 +126,31 @@ export async function travel(
         { duration: duration / flaps, iterations: flaps },
       ),
     ])
-    return
+    return to
   }
   const quick = animal === 'squirrel'
   const n = Math.max(1, Math.round(dist / (s * (quick ? 0.7 : 0.8))))
   const hop = quick ? 190 : 260
-  await Promise.all([
-    play(els.mover, hopPath(from, to, n, s * (quick ? 0.18 : 0.28), s), { duration: n * hop }),
-    play(
-      els.body,
-      [
-        { transform: 'none' },
-        { transform: 'scale(0.94, 1.06)', offset: 0.3 },
-        { transform: 'scale(1.06, 0.92)', offset: 0.9 },
-        { transform: 'none' },
-      ],
-      { duration: hop, iterations: n },
-    ),
-  ])
+  let at = from
+  for (let k = 1; k <= n; k++) {
+    const next = { x: from.x + (dx * k) / n, y: from.y + ((to.y - from.y) * k) / n }
+    await Promise.all([
+      play(els.mover, hopPath(at, next, 1, s * (quick ? 0.18 : 0.28), s), { duration: hop }),
+      play(
+        els.body,
+        [
+          { transform: 'none' },
+          { transform: 'scale(0.94, 1.06)', offset: 0.3 },
+          { transform: 'scale(1.06, 0.92)', offset: 0.9 },
+          { transform: 'none' },
+        ],
+        { duration: hop },
+      ),
+    ])
+    at = next
+    if (k < n && !keepGoing()) return at
+  }
+  return at
 }
 
 export type Stage = {

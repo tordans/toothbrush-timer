@@ -63,7 +63,7 @@ export function HomePage() {
   const labelColor = dark
     ? 'text-cream [text-shadow:0_0_6px_rgb(0_0_0/0.5),0_1px_3px_rgb(0_0_0/0.45)]'
     : 'text-bark-900 [text-shadow:0_0_6px_rgb(255_255_255/0.9),0_1px_2px_rgb(255_255_255/0.8)]'
-  const sound = useForestSound(dark ? 'evening' : 'day')
+  const sound = useForestSound(dark ? 'evening' : 'day', kid?.animal)
 
   const today = isoDay(now)
   const photo = usePhotoReward(kid?.id, now)
